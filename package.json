@@ -1,0 +1,35 @@
+{
+  "name": "match_and_go_backend_react",
+  "version": "1.0.0",
+  "description": "backend project of my intership \"Match&Go\" with node.js and mongodb database",
+  "main": "index.js",
+ 
+  "scripts": {
+    "server": "nodemon src/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mrabetyosr/match_and_go_backend_react.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mrabetyosr/match_and_go_backend_react/issues"
+  },
+  "homepage": "https://github.com/mrabetyosr/match_and_go_backend_react#readme",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.17.1",
+    "multer": "^2.0.2",
+    "nodemon": "^3.1.10",
+    "stripe": "^18.4.0",
+    "validator": "^13.15.15"
+  }
+}
