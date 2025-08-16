@@ -1,6 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv").config();
 const dbConnect = require("./config/dbConnect");
+const authRoutes = require("./routes/authRoutes");
 
 dbConnect(); // Connect to the database
 
@@ -11,6 +12,9 @@ const app = express();
 //middleware
 //app.use(cors()); //access from any frontend
 app.use(express.json());
+
+//routes
+app.use("/api/auth", authRoutes);
 
 //start the server
 const PORT = process.env.PORT || 7002;
