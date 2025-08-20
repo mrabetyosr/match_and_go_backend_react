@@ -151,3 +151,14 @@ module.exports.getAllCandidates = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+// Get all companies
+module.exports.getAllCompany = async (req, res) => {
+  try {
+    // Find users where role is "company"
+    const companies = await User.find({ role: "company" });
+
+    res.status(200).json({ companies });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
