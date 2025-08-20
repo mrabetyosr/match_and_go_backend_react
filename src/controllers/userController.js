@@ -47,6 +47,7 @@ module.exports.updatePhoto = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
 //update cover photo
 module.exports.updateCover = async (req, res) => {
     try {
@@ -71,6 +72,8 @@ module.exports.updateCover = async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 };
+
+
 // delete user by id
 // only admin can delete user
 module.exports.DeleteUserById = async (req, res) => {

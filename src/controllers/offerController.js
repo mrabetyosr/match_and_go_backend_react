@@ -2,6 +2,7 @@ const Offer = require("../models/offerModel");
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
 
+// Add an offer (only for companies)
 const addOfferCompany = async (req, res) => {
   try {
     const token = req.headers.authorization?.split(" ")[1];
@@ -23,5 +24,14 @@ const addOfferCompany = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+//gel all offers 
+const getAllOffers = async (req, res) => {
+  try {
+    const offers = await Offer.find().populate("companyId", "username companyInfo");
+    res.status(200).json(offers);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 
-module.exports = { addOfferCompany };
+module.exports = { addOfferCompany,getAllOffers };
