@@ -1,6 +1,8 @@
 const express = require("express");
 const verifyToken = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
+const { updatePhoto } = require("../controllers/userController");
+const uploadfile = require("../middleware/uploadFile");
 const router = express.Router();
 
 //only admin can access this route
@@ -18,5 +20,11 @@ router.get("/candidate", verifyToken, authorizeRoles("candidate", "admin", "comp
     res.json({ message: "welcome candidate" });
 });
 
+router.put(
+  "/update-photo",
+  verifyToken,
+  uploadfile.single("image_User"), // "image_User" doit être le name du champ dans ton form-data
+  updatePhoto
+);
 
 module.exports = router;
