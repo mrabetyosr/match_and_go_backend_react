@@ -1,7 +1,7 @@
 const express = require("express");
 const verifyToken = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
-const { updatePhoto } = require("../controllers/userController");
+const { updatePhoto,DeleteUserById } = require("../controllers/userController");
 const uploadfile = require("../middleware/uploadFile");
 const router = express.Router();
 
@@ -20,11 +20,15 @@ router.get("/candidate", verifyToken, authorizeRoles("candidate", "admin", "comp
     res.json({ message: "welcome candidate" });
 });
 
+// Update user photo
 router.put(
   "/update-photo",
   verifyToken,
-  uploadfile.single("image_User"), // "image_User" doit être le name du champ dans ton form-data
+  uploadfile.single("image_User"), 
   updatePhoto
 );
+
+// Delete user by ID
+router.delete("/delete/:id", verifyToken, authorizeRoles("admin"), DeleteUserById);
 
 module.exports = router;
