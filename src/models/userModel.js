@@ -26,6 +26,10 @@ const userSchema = new mongoose.Schema(
         type: String, 
         default: "user.png" 
     },
+    cover_User: {
+            type: String,
+            default: "defaultCover.png" 
+        },
 
      companyInfo: {
     

@@ -47,6 +47,30 @@ module.exports.updatePhoto = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+//update cover photo
+module.exports.updateCover = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: "Aucun fichier fourni" });
+        }
+
+        const updatedUser = await User.findByIdAndUpdate(
+            req.user.id,
+            { cover_User: req.file.filename },
+            { new: true }
+        );
+
+        if (!updatedUser) {
+            await cleanupUploadedFile(req.file);
+            return res.status(404).json({ message: "Utilisateur non trouvé" });
+        }
+
+        res.status(200).json(updatedUser);
+    } catch (err) {
+        await cleanupUploadedFile(req.file);
+        res.status(500).json({ message: err.message });
+    }
+};
 // delete user by id
 // only admin can delete user
 module.exports.DeleteUserById = async (req, res) => {

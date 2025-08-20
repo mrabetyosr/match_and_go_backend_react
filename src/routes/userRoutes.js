@@ -1,7 +1,7 @@
 const express = require("express");
 const verifyToken = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
-const { updatePhoto,DeleteUserById,getAllCandidates, updateUserInfo, getAllCompany} = require("../controllers/userController");
+const { updatePhoto,DeleteUserById,getAllCandidates, updateUserInfo, getAllCompany, updateCover} = require("../controllers/userController");
 const uploadfile = require("../middleware/uploadFile");
 const router = express.Router();
 
@@ -26,6 +26,13 @@ router.put(
   verifyToken,
   uploadfile.single("image_User"), 
   updatePhoto
+);
+// Upload single file pour cover_User
+router.put(
+    "/update-cover",
+    verifyToken,
+    uploadfile.single("cover_User"),
+    updateCover
 );
 
 // Delete user by ID
