@@ -1,8 +1,20 @@
 const express = require("express");
 const dotenv = require("dotenv").config();
+const path = require("path");
+const fetch = require("node-fetch");
 const dbConnect = require("./config/dbConnect");
+
+
+//gemini 
+global.fetch = fetch;
+global.Headers = fetch.Headers;
+global.Request = fetch.Request;
+global.Response = fetch.Response;
+
+// Import des routes
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
+const geminiRoutes = require("./routes/geminiRoutes");
 
 dbConnect(); // Connect to the database
 
@@ -17,6 +29,7 @@ app.use(express.json());
 //routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/gemini", geminiRoutes); 
 
 //start the server
 const PORT = process.env.PORT || 7002;
