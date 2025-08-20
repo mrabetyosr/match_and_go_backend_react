@@ -26,6 +26,29 @@ const userSchema = new mongoose.Schema(
         type: String, 
         default: "user.png" 
     },
+
+     companyInfo: {
+    
+      description: { type: String },
+      location: { type: String },
+      category: { 
+        type: String, 
+        enum: [
+          "Tech",
+          "Advertising / Marketing",
+          "Culture / Media",
+          "Consulting / Audit",
+          "Education / Training",
+          "Finance / Banking"
+        ] 
+      },
+      founded: { type: Number },
+      size: { type: String },
+      website: { type: String },
+      socialLinks: { 
+        linkedin: { type: String } 
+      },
+    },
 },
     {
         timestamps: true,

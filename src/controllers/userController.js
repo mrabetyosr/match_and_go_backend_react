@@ -7,6 +7,7 @@ const jwt = require("jsonwebtoken");
 const userModel = require("../models/userModel");
 
 
+
 async function cleanupUploadedFile(file) {
   try {
     if (!file) return;
@@ -19,6 +20,8 @@ async function cleanupUploadedFile(file) {
     }
   }
 }
+// Update user photo
+// only connected user can update his photo
 
 module.exports.updatePhoto = async (req, res) => {
   try {
@@ -44,7 +47,8 @@ module.exports.updatePhoto = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
+// delete user by id
+// only admin can delete user
 module.exports.DeleteUserById = async (req, res) => {
   try {
     const id = req.params.id;
@@ -78,5 +82,57 @@ module.exports.DeleteUserById = async (req, res) => {
 
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+
+// Update user information
+// only connected user can update his information
+
+module.exports.updateUserInfo = async (req, res) => {
+  try {
+    const userId = req.user.id; 
+    const { username, image_User, companyInfo } = req.body || {};
+
+    const updateData = {};
+
+   
+    if (username) {
+      const existingUser = await User.findOne({ username, _id: { $ne: userId } });
+      if (existingUser) {
+        return res.status(400).json({ message: "Username déjà utilisé" });
+      }
+      updateData.username = username;
+    }
+
+   
+    if (image_User) {
+      updateData.image_User = image_User;
+    }
+
+
+    if (companyInfo) {
+      
+      const company = typeof companyInfo === "string" ? JSON.parse(companyInfo) : companyInfo;
+
+      updateData.companyInfo = {};
+      const allowedFields = ["description", "location", "category", "founded", "size", "website", "socialLinks"];
+      allowedFields.forEach(field => {
+        if (company[field] !== undefined) {
+          updateData.companyInfo[field] = company[field];
+        }
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, { new: true });
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "Utilisateur non trouvé" });
+    }
+
+    res.status(200).json(updatedUser);
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
