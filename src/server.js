@@ -15,6 +15,7 @@ global.Response = fetch.Response;
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const geminiRoutes = require("./routes/geminiRoutes");
+const offerRoutes = require("./routes/offerRoutes");
 
 dbConnect(); // Connect to the database
 
@@ -30,6 +31,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/gemini", geminiRoutes); 
+app.use("/api/offers", offerRoutes);
 
 //start the server
 const PORT = process.env.PORT || 7002;
