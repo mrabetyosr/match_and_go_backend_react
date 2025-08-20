@@ -1,7 +1,7 @@
 const express = require("express");
 const verifyToken = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
-const { updatePhoto,DeleteUserById,updateUser, updateUserInfo } = require("../controllers/userController");
+const { updatePhoto,DeleteUserById,getAllCandidates, updateUserInfo } = require("../controllers/userController");
 const uploadfile = require("../middleware/uploadFile");
 const router = express.Router();
 
@@ -33,5 +33,7 @@ router.delete("/delete/:id", verifyToken, authorizeRoles("admin"), DeleteUserByI
 
 //update user info 
 router.put("/update", verifyToken, updateUserInfo);
+//get all candidates
+router.get("/getAllCandidates", getAllCandidates);
 
 module.exports = router;

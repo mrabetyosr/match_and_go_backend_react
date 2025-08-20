@@ -136,3 +136,18 @@ module.exports.updateUserInfo = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// Get all candidates
+module.exports.getAllCandidates = async (req, res) => {
+  try {
+    const candidates = await User.find({ role: "candidate" });
+
+    if (!candidates || candidates.length === 0) {
+      return res.status(404).json({ message: "No candidates found" });
+    }
+
+    res.status(200).json({ candidates });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
