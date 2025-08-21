@@ -93,3 +93,46 @@ exports.updateQuiz = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+//delete quiz for an offer
+exports.deleteQuizByOwner = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "Token manquant" });
+    }
+
+    const token = authHeader.split(" ")[1];
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ message: "Token invalide" });
+    }
+
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) return res.status(404).json({ message: "Quiz not found" });
+
+    const offer = await Offer.findById(quiz.offer);
+    if (!offer) return res.status(404).json({ message: "Offre associée non trouvée" });
+
+
+    if (offer.companyId.toString() !== decoded.id) {
+      return res.status(403).json({ message: "Access denied: you are not the owner of this quiz!" });
+    }
+
+    
+    await Quiz.findByIdAndDelete(quizId);
+
+   
+    offer.quizzes = offer.quizzes.filter(qId => qId.toString() !== quizId);
+    if (offer.quizzes.length === 0) offer.hasQuiz = false;
+    await offer.save();
+
+    res.status(200).json({ message: "Quiz deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
