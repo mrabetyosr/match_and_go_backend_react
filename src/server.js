@@ -16,6 +16,7 @@ const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const geminiRoutes = require("./routes/geminiRoutes");
 const offerRoutes = require("./routes/offerRoutes");
+const cors = require("cors");
 
 dbConnect(); // Connect to the database
 
@@ -25,6 +26,7 @@ const app = express();
 
 //middleware
 //app.use(cors()); //access from any frontend
+app.use(cors({ origin: "http://localhost:3000" }));
 app.use(express.json());
 
 //routes
