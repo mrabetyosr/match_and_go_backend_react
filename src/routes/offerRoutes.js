@@ -3,7 +3,7 @@ const router = express.Router();
 const { addOfferCompany,getAllOffers,deleteOfferCompany } = require("../controllers/offerController");
 const verifyToken = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
-const { createQuizForOffer } = require("../controllers/quizController");
+const { createQuizForOffer,getAllQuizByOffer } = require("../controllers/quizController");
 
 // Ajouter une offre (seulement company)
 router.post("/add", addOfferCompany);
@@ -24,6 +24,9 @@ router.post(
   authorizeRoles("company"),
   createQuizForOffer
 );
+
+// Get all quizzes for an offer
+router.get("/:offerId/quiz", verifyToken, getAllQuizByOffer);
 
 
 module.exports = router;

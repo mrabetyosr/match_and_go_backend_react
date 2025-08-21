@@ -7,7 +7,6 @@ exports.createQuizForOffer = async (req, res) => {
     const { offerId } = req.params;
     const { title, durationSeconds = 0, totalScore = 100 } = req.body;
 
-    // Vérifier que le token est présent
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({ message: "Token manquant" });
@@ -24,7 +23,7 @@ exports.createQuizForOffer = async (req, res) => {
     const offer = await Offer.findById(offerId);
     if (!offer) return res.status(404).json({ message: "Offre not found" });
 
-    // Vérifier si l'utilisateur connecté est le propriétaire de l'offre
+    
     if (offer.companyId.toString() !== decoded.id) {
       return res.status(403).json({ message: "Access denied: you are not the owner of the offer!" });
     }
@@ -36,6 +35,25 @@ exports.createQuizForOffer = async (req, res) => {
     await offer.save();
 
     res.status(201).json(quiz);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+///////////// Get all quizzes for a specific offer
+
+exports.getAllQuizByOffer = async (req, res) => {
+  try {
+    const { offerId } = req.params;
+
+  
+    const offer = await Offer.findById(offerId);
+    if (!offer) return res.status(404).json({ message: "Offre introuvable" });
+
+    
+    const quizzes = await Quiz.find({ offer: offerId });
+
+    res.status(200).json(quizzes);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
