@@ -136,3 +136,26 @@ exports.deleteQuizByOwner = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+////////////////////////random quiz for an offer
+exports.getRandomQuizByOffer = async (req, res) => {
+  try {
+    const { offerId } = req.params;
+
+    // Vérifier que l'offre existe
+    const offer = await Offer.findById(offerId);
+    if (!offer) return res.status(404).json({ message: "Offer not found" });
+
+    // Récupérer un quiz aléatoire lié à cette offre
+    const [randomQuiz] = await Quiz.aggregate([
+      { $match: { offer: offer._id } },
+      { $sample: { size: 1 } }
+    ]);
+
+    if (!randomQuiz) return res.status(404).json({ message: "No quiz found for this offer" });
+
+    res.status(200).json(randomQuiz);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
