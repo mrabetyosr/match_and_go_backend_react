@@ -189,3 +189,38 @@ module.exports.getAllCompany = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// Get companies by category
+module.exports.getCompaniesByCategory = async (req, res) => {
+  try {
+    const { category } = req.params;
+
+  
+    const validCategories = [
+    "Tech",
+    "Advertising&Marketing",
+    "Culture&Media",
+    "Consulting&Audit",
+    "Education&Training",
+    "Finance&Banking"
+
+    ];
+    if (!validCategories.includes(category)) {
+      return res.status(400).json({ message: "Invalid category" });
+    }
+
+    
+    const companies = await User.find({ 
+      role: "company", 
+      "companyInfo.category": category 
+    });
+
+    if (!companies || companies.length === 0) {
+      return res.status(404).json({ message: `No companies found in category ${category}` });
+    }
+
+    res.status(200).json({ companies });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

@@ -38,12 +38,12 @@ const userSchema = new mongoose.Schema(
       category: { 
         type: String, 
         enum: [
-          "Tech",
-          "Advertising / Marketing",
-          "Culture / Media",
-          "Consulting / Audit",
-          "Education / Training",
-          "Finance / Banking"
+             "Tech",
+            "Advertising&Marketing",
+            "Culture&Media",
+            "Consulting&Audit",
+            "Education&Training",
+            "Finance&Banking"
         ] 
       },
       founded: { type: Number },
