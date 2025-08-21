@@ -24,7 +24,11 @@ const offerSchema = new mongoose.Schema(
     responsibilities: [{ type: String }],
     requirements: [{ type: String }],
     benefits: [{ type: String }],
+    //quiz
+    hasQuiz: { type: Boolean, default: false },
+    quizzes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Quiz" }], 
   },
+  
   { timestamps: true }
 );
 
