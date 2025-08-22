@@ -16,6 +16,7 @@ const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const geminiRoutes = require("./routes/geminiRoutes");
 const offerRoutes = require("./routes/offerRoutes");
+const questionRoutes = require("./routes/questionRoutes");
 const cors = require("cors");
 
 dbConnect(); // Connect to the database
@@ -34,6 +35,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/gemini", geminiRoutes); 
 app.use("/api/offers", offerRoutes);
+app.use("/api/questions", questionRoutes);
 
 //start the server
 const PORT = process.env.PORT || 7002;

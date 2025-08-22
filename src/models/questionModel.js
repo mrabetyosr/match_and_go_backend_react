@@ -7,14 +7,16 @@ const questionSchema = new mongoose.Schema(
     text: { type: String, required: true, trim: true },
     correctAnswer: { type: String, required: true, trim: true },
     wrongAnswers: {
-      type: [String],
-      validate: [
-        {
-          validator: (arr) => Array.isArray(arr) && arr.length >= 1,
-          message: "Au moins une réponse fausse est requise.",
-        },
-      ],
+  type: [String],
+  required: true,
+  validate: [
+    {
+      validator: (arr) => Array.isArray(arr) && arr.length >= 1,
+      message: "Au moins une réponse fausse est requise.",
     },
+  ],
+},
+
     score: { type: Number, default: 1, min: 0 },
     order: { type: Number, default: 0 },
   },
