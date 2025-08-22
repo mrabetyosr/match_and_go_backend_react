@@ -15,11 +15,11 @@ exports.addQuestionToQuiz = async (req, res) => {
     const offer = await Offer.findById(quiz.offer);
     if (!offer) return res.status(404).json({ message: "Offre introuvable" });
 
-    // Vérifier que seul le propriétaire de l'offre peut ajouter
+    
     if (offer.companyId.toString() !== userId)
       return res.status(403).json({ message: "Vous n'êtes pas autorisé à ajouter une question" });
 
-    // Vérifier le nombre de questions existantes
+    
     const questionCount = await Question.countDocuments({ quiz: quizId });
     if (questionCount >= quiz.nbrQuestions)
       return res.status(400).json({ message: `Impossible d'ajouter plus de ${quiz.nbrQuestions} questions à ce quiz` });
@@ -28,6 +28,17 @@ exports.addQuestionToQuiz = async (req, res) => {
     const question = await Question.create({ quiz: quizId, text, correctAnswer, wrongAnswers, score, order });
 
     res.status(201).json(question);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/////////////////////// Récupérer toutes les questions d’un quiz ///////////////////////
+exports.getQuestionsByQuiz = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    const questions = await Question.find({ quiz: quizId }).sort({ order: 1 });
+    res.status(200).json(questions);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
