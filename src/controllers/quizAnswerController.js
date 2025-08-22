@@ -1,6 +1,7 @@
 const Quiz = require("../models/quizModel");
 const Question = require("../models/questionModel");
 const QuizAnswer = require("../models/quizAnswer");
+const Offer = require("../models/offerModel");
 
 exports.submitQuiz = async (req, res) => {
   try {
@@ -66,6 +67,36 @@ exports.submitQuiz = async (req, res) => {
     });
 
     res.status(201).json({ message: "Quiz submitted successfully", quizAnswer });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+//get all submissions of a quiz
+exports.getQuizSubmissions = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    const userId = req.user.id;
+
+    
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) return res.status(404).json({ message: "Quiz not found" });
+
+    
+    const offer = await Offer.findById(quiz.offer);
+    if (!offer) return res.status(404).json({ message: "Offer not found" });
+
+    
+    if (offer.companyId.toString() !== userId) {
+      return res.status(403).json({ message: "You are not the owner of this offer" });
+    }
+
+   
+    const submissions = await QuizAnswer.find({ quiz: quizId })
+      .populate("candidate", "username email");
+
+    res.status(200).json({ quizId, submissions });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
