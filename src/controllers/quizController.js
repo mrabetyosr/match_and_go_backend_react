@@ -1,6 +1,9 @@
 const Offer = require("../models/offerModel");
 const jwt = require("jsonwebtoken");
 const Quiz = require("../models/quizModel");
+const User = require("../models/userModel");
+const sendEmail = require("../utils/sendEmail");
+
 
 /// Create a quiz for an offer (only owner)
 
@@ -178,6 +181,43 @@ exports.getQuizCountByOffer = async (req, res) => {
     const quizCount = offer.quizzes.length;
 
     res.status(200).json({ offerId, quizCount });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+////////////////////////publish quiz for an offer
+
+exports.publishQuiz = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    const userId = req.user.id;
+
+    const quiz = await Quiz.findById(quizId).populate("offer");
+    if (!quiz) return res.status(404).json({ message: "Quiz introuvable" });
+
+    // Vérifier que le user est le propriétaire de l'offre
+    if (quiz.offer.companyId.toString() !== userId)
+      return res.status(403).json({ message: "Vous n'êtes pas autorisé à publier ce quiz" });
+
+    // Vérifier si déjà publié
+    if (quiz.isPublished)
+      return res.status(400).json({ message: "Ce quiz est déjà publié" });
+
+    // Publier le quiz
+    quiz.isPublished = true;
+    await quiz.save();
+
+    // Envoyer email au propriétaire
+    const owner = await User.findById(userId);
+    if (owner && owner.email) {
+      await sendEmail(
+        owner.email,
+        "Votre quiz a été publié",
+        `Le quiz "${quiz.title}" pour l'offre "${quiz.offer.jobTitle}" est maintenant publié.`
+      );
+    }
+
+    res.status(200).json({ message: "Quiz publié avec succès", quiz });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
