@@ -44,3 +44,32 @@ exports.getQuestionsByQuiz = async (req, res) => {
   }
 };
 
+/////////////////////// Mettre à jour une question ///////////////////////
+exports.updateQuestion = async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const { text, correctAnswer, wrongAnswers, score, order } = req.body;
+    const userId = req.user.id;
+
+    const question = await Question.findById(questionId);
+    if (!question) return res.status(404).json({ message: "Question introuvable" });
+
+    const quiz = await Quiz.findById(question.quiz);
+    const offer = await Offer.findById(quiz.offer);
+
+    if (offer.companyId.toString() !== userId)
+      return res.status(403).json({ message: "Seul le propriétaire de l'offre peut modifier cette question" });
+
+    if (text) question.text = text;
+    if (correctAnswer) question.correctAnswer = correctAnswer;
+    if (wrongAnswers) question.wrongAnswers = wrongAnswers;
+    if (score !== undefined) question.score = score;
+    if (order !== undefined) question.order = order;
+
+    await question.save();
+    res.status(200).json(question);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+

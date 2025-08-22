@@ -3,7 +3,9 @@ const router = express.Router();
 const verifyToken = require("../middleware/authMiddleware");
 const {
   addQuestionToQuiz,
-  getQuestionsByQuiz
+  getQuestionsByQuiz,
+  updateQuestion,
+  deleteQuestion
 
 } = require("../controllers/QuestionController");
 
@@ -12,6 +14,10 @@ router.post("/:quizId/add", verifyToken, addQuestionToQuiz);
 
 // Récupérer toutes les questions d’un quiz
 router.get("/:quizId/all", verifyToken, getQuestionsByQuiz);
+
+// Mettre à jour une question (seul owner de l'offre)
+router.put("/update/:questionId", verifyToken, updateQuestion);
+
 
 
 module.exports = router;
