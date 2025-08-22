@@ -1,4 +1,3 @@
-// controllers/quizAnswerController.js
 const Quiz = require("../models/quizModel");
 const Question = require("../models/questionModel");
 const QuizAnswer = require("../models/quizAnswer");
@@ -9,9 +8,9 @@ exports.submitQuiz = async (req, res) => {
     const { answers } = req.body;
     const candidateId = req.user.id;
 
-    // Ensure the user is a candidate
+    // Only candidates can submit a quiz
     if (req.user.role !== "candidate") {
-      return res.status(403).json({ message: "Only candidates can submit a quiz" });
+      return res.status(403).json({ message: "Only a candidate can submit a quiz" });
     }
 
     const quiz = await Quiz.findById(quizId);
@@ -19,12 +18,27 @@ exports.submitQuiz = async (req, res) => {
       return res.status(404).json({ message: "Quiz not found or not published" });
     }
 
-    // Check if the candidate has already submitted
-    const existing = await QuizAnswer.findOne({ quiz: quizId, candidate: candidateId });
-    if (existing) {
-      return res.status(400).json({ message: "You have already submitted this quiz" });
+    // Check if candidate has already submitted a quiz for the same offer
+    const previousSubmission = await QuizAnswer.findOne({
+      candidate: candidateId
+    }).populate({
+      path: "quiz",
+      match: { offer: quiz.offer } // only quizzes of the same offer
+    }).sort({ createdAt: -1 });
+
+    if (previousSubmission && previousSubmission.quiz) {
+      const lastSubmissionTime = new Date(previousSubmission.createdAt);
+      const now = new Date();
+      const diffHours = (now - lastSubmissionTime) / (1000 * 60 * 60);
+
+      if (diffHours < 48) {
+        return res.status(400).json({
+          message: "You can only submit another quiz for this offer after 48 hours"
+        });
+      }
     }
 
+    // Process answers and calculate total score
     let totalScore = 0;
     const processedAnswers = [];
 
