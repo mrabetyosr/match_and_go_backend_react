@@ -7,7 +7,7 @@ const quizSchema = new mongoose.Schema(
     title: { type: String, required: true, trim: true },
     durationSeconds: { type: Number, default: 0, min: 0 },
     nbrQuestions: { type: Number, default: 0, min: 0 },
-    totalScore: { type: Number, default: 100, min: 0 },
+    totalScore: { type: Number, default: 0, min: 0 },
     isActive: { type: Boolean, default: true },
     isPublished: { type: Boolean, default: false },
   },

@@ -7,7 +7,7 @@ exports.addQuestionToQuiz = async (req, res) => {
   try {
     const { quizId } = req.params;
     const { text, correctAnswer, wrongAnswers, score = 1 } = req.body;
-    const userId = req.user.id; // récupéré depuis verifyToken
+    const userId = req.user.id;
 
     const quiz = await Quiz.findById(quizId);
     if (!quiz) return res.status(404).json({ message: "Quiz introuvable" });
@@ -15,23 +15,25 @@ exports.addQuestionToQuiz = async (req, res) => {
     const offer = await Offer.findById(quiz.offer);
     if (!offer) return res.status(404).json({ message: "Offre introuvable" });
 
-    
     if (offer.companyId.toString() !== userId)
       return res.status(403).json({ message: "Vous n'êtes pas autorisé à ajouter une question" });
 
-    
+    // Calculer l'ordre de la nouvelle question
     const questionCount = await Question.countDocuments({ quiz: quizId });
-    if (questionCount >= quiz.nbrQuestions)
-      return res.status(400).json({ message: `Impossible d'ajouter plus de ${quiz.nbrQuestions} questions à ce quiz` });
+    const order = questionCount + 1;
 
-    const order = questionCount + 1; // ordre automatique
+    // Créer la question
     const question = await Question.create({ quiz: quizId, text, correctAnswer, wrongAnswers, score, order });
+
+    // Recalculer automatiquement le score total et le nombre de questions
+    await recalcQuizStats(quizId);
 
     res.status(201).json(question);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
+
 
 /////////////////////// Récupérer toutes les questions d’un quiz ///////////////////////
 exports.getQuestionsByQuiz = async (req, res) => {
@@ -93,4 +95,14 @@ exports.deleteQuestion = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
+};
+
+
+//recalcul score de quiz 
+const recalcQuizStats = async (quizId) => {
+  const questions = await Question.find({ quiz: quizId });
+  const totalScore = questions.reduce((sum, q) => sum + q.score, 0);
+  const nbrQuestions = questions.length;
+
+  await Quiz.findByIdAndUpdate(quizId, { totalScore, nbrQuestions });
 };

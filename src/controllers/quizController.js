@@ -3,14 +3,24 @@ const jwt = require("jsonwebtoken");
 const Quiz = require("../models/quizModel");
 const User = require("../models/userModel");
 const sendEmail = require("../utils/sendEmail");
+const Question = require("../models/questionModel");
 
 
-/// Create a quiz for an offer (only owner)
+// 🔹 Fonction utilitaire : recalcul automatique du totalScore et nbrQuestions
+const recalcQuizStats = async (quizId) => {
+  const questions = await Question.find({ quiz: quizId });
+  const totalScore = questions.reduce((sum, q) => sum + q.score, 0);
+  const nbrQuestions = questions.length;
 
+  await Quiz.findByIdAndUpdate(quizId, { totalScore, nbrQuestions });
+};
+
+
+/// 🔹 Créer un quiz pour une offre (seulement par le propriétaire)
 exports.createQuizForOffer = async (req, res) => {
   try {
     const { offerId } = req.params;
-    const { title, durationSeconds = 0, totalScore = 100, nbrQuestions = 0 } = req.body; // nbrQuestions destructuré
+    const { title, durationSeconds = 0 } = req.body; // ❌ plus de totalScore & nbrQuestions manuels
 
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -26,13 +36,15 @@ exports.createQuizForOffer = async (req, res) => {
     }
 
     const offer = await Offer.findById(offerId);
-    if (!offer) return res.status(404).json({ message: "Offre not found" });
+    if (!offer) return res.status(404).json({ message: "Offer not found" });
 
     if (offer.companyId.toString() !== decoded.id) {
       return res.status(403).json({ message: "Access denied: you are not the owner of the offer!" });
     }
 
-    const quiz = await Quiz.create({ offer: offerId, title, durationSeconds, totalScore, nbrQuestions }); 
+    const quiz = await Quiz.create({ offer: offerId, title, durationSeconds });
+
+    await recalcQuizStats(quiz._id);
 
     offer.hasQuiz = true;
     offer.quizzes.push(quiz._id);
@@ -45,17 +57,14 @@ exports.createQuizForOffer = async (req, res) => {
 };
 
 
-///////////// Get all quizzes for a specific offer
-
+/// 🔹 Récupérer tous les quiz d’une offre
 exports.getAllQuizByOffer = async (req, res) => {
   try {
     const { offerId } = req.params;
 
-  
     const offer = await Offer.findById(offerId);
-    if (!offer) return res.status(404).json({ message: "Offre introuvable" });
+    if (!offer) return res.status(404).json({ message: "Offer not found" });
 
-    
     const quizzes = await Quiz.find({ offer: offerId });
 
     res.status(200).json(quizzes);
@@ -64,47 +73,46 @@ exports.getAllQuizByOffer = async (req, res) => {
   }
 };
 
-/////////////update quiz for an offer
+
+/// 🔹 Mettre à jour un quiz
 exports.updateQuiz = async (req, res) => {
   try {
     const { quizId } = req.params;
-    const userId = req.user.id; // récupéré depuis le token
-    const { title, durationSeconds, nbrQuestions, totalScore, isActive } = req.body;
+    const userId = req.user.id;
+    const { title, durationSeconds, isActive } = req.body; // ❌ plus besoin de totalScore & nbrQuestions
 
     const quiz = await Quiz.findById(quizId);
-    if (!quiz) return res.status(404).json({ message: "Quiz introuvable" });
+    if (!quiz) return res.status(404).json({ message: "Quiz not found" });
 
     const offer = await Offer.findById(quiz.offer);
-    if (!offer) return res.status(404).json({ message: "Offre introuvable" });
+    if (!offer) return res.status(404).json({ message: "Offer not found" });
 
-    
     if (offer.companyId.toString() !== userId) {
-      return res.status(403).json({ message: "Vous n'êtes pas autorisé à modifier ce quiz" });
+      return res.status(403).json({ message: "You are not allowed to update this quiz" });
     }
 
-    
     if (title) quiz.title = title;
     if (durationSeconds !== undefined) quiz.durationSeconds = durationSeconds;
-    if (nbrQuestions !== undefined) quiz.nbrQuestions = nbrQuestions;
-    if (totalScore !== undefined) quiz.totalScore = totalScore;
     if (isActive !== undefined) quiz.isActive = isActive;
 
     await quiz.save();
-    res.status(200).json(quiz);
+    await recalcQuizStats(quiz._id);
 
+    res.status(200).json(quiz);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-//delete quiz for an offer
+
+/// 🔹 Supprimer un quiz
 exports.deleteQuizByOwner = async (req, res) => {
   try {
     const { quizId } = req.params;
 
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ message: "Token manquant" });
+      return res.status(401).json({ message: "Token missing" });
     }
 
     const token = authHeader.split(" ")[1];
@@ -112,24 +120,21 @@ exports.deleteQuizByOwner = async (req, res) => {
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
     } catch (err) {
-      return res.status(401).json({ message: "Token invalide" });
+      return res.status(401).json({ message: "Invalid token" });
     }
 
     const quiz = await Quiz.findById(quizId);
     if (!quiz) return res.status(404).json({ message: "Quiz not found" });
 
     const offer = await Offer.findById(quiz.offer);
-    if (!offer) return res.status(404).json({ message: "Offre associée non trouvée" });
-
+    if (!offer) return res.status(404).json({ message: "Associated offer not found" });
 
     if (offer.companyId.toString() !== decoded.id) {
       return res.status(403).json({ message: "Access denied: you are not the owner of this quiz!" });
     }
 
-    
     await Quiz.findByIdAndDelete(quizId);
 
-   
     offer.quizzes = offer.quizzes.filter(qId => qId.toString() !== quizId);
     if (offer.quizzes.length === 0) offer.hasQuiz = false;
     await offer.save();
@@ -140,16 +145,15 @@ exports.deleteQuizByOwner = async (req, res) => {
   }
 };
 
-////////////////////////random quiz for an offer
+
+/// 🔹 Récupérer un quiz aléatoire
 exports.getRandomQuizByOffer = async (req, res) => {
   try {
     const { offerId } = req.params;
 
-    // Vérifier que l'offre existe
     const offer = await Offer.findById(offerId);
     if (!offer) return res.status(404).json({ message: "Offer not found" });
 
-    // Récupérer un quiz aléatoire lié à cette offre
     const [randomQuiz] = await Quiz.aggregate([
       { $match: { offer: offer._id } },
       { $sample: { size: 1 } }
@@ -163,19 +167,18 @@ exports.getRandomQuizByOffer = async (req, res) => {
   }
 };
 
-////////////////// nombre de quiz////////////
+
+/// 🔹 Nombre de quiz pour une offre
 exports.getQuizCountByOffer = async (req, res) => {
   try {
     const { offerId } = req.params;
-    const userId = req.user.id; // récupéré depuis verifyToken
+    const userId = req.user.id;
 
-    
     const offer = await Offer.findById(offerId);
-    if (!offer) return res.status(404).json({ message: "Offre introuvable" });
+    if (!offer) return res.status(404).json({ message: "Offer not found" });
 
-    
     if (offer.companyId.toString() !== userId) {
-      return res.status(403).json({ message: "Accès refusé : vous n'êtes pas le propriétaire de cette offre" });
+      return res.status(403).json({ message: "Access denied: you are not the owner of this offer" });
     }
 
     const quizCount = offer.quizzes.length;
@@ -185,39 +188,36 @@ exports.getQuizCountByOffer = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-////////////////////////publish quiz for an offer
 
+
+/// 🔹 Publier un quiz
 exports.publishQuiz = async (req, res) => {
   try {
     const { quizId } = req.params;
     const userId = req.user.id;
 
     const quiz = await Quiz.findById(quizId).populate("offer");
-    if (!quiz) return res.status(404).json({ message: "Quiz introuvable" });
+    if (!quiz) return res.status(404).json({ message: "Quiz not found" });
 
-    // Vérifier que le user est le propriétaire de l'offre
     if (quiz.offer.companyId.toString() !== userId)
-      return res.status(403).json({ message: "Vous n'êtes pas autorisé à publier ce quiz" });
+      return res.status(403).json({ message: "You are not allowed to publish this quiz" });
 
-    // Vérifier si déjà publié
     if (quiz.isPublished)
-      return res.status(400).json({ message: "Ce quiz est déjà publié" });
+      return res.status(400).json({ message: "This quiz is already published" });
 
-    // Publier le quiz
     quiz.isPublished = true;
     await quiz.save();
 
-    // Envoyer email au propriétaire
     const owner = await User.findById(userId);
     if (owner && owner.email) {
       await sendEmail(
         owner.email,
-        "Votre quiz a été publié",
-        `Le quiz "${quiz.title}" pour l'offre "${quiz.offer.jobTitle}" est maintenant publié.`
+        "Quiz Published",
+        `The quiz "${quiz.title}" for the offer "${quiz.offer.jobTitle}" is now published.`
       );
     }
 
-    res.status(200).json({ message: "Quiz publié avec succès", quiz });
+    res.status(200).json({ message: "Quiz published successfully", quiz });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
