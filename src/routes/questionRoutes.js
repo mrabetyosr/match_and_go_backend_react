@@ -18,6 +18,7 @@ router.get("/:quizId/all", verifyToken, getQuestionsByQuiz);
 // Mettre à jour une question (seul owner de l'offre)
 router.put("/update/:questionId", verifyToken, updateQuestion);
 
-
+// Supprimer une question (seul owner de l'offre)
+router.delete("/delete/:questionId", verifyToken, deleteQuestion);
 
 module.exports = router;

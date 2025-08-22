@@ -73,3 +73,24 @@ exports.updateQuestion = async (req, res) => {
   }
 };
 
+/////////////////////// Supprimer une question ///////////////////////
+exports.deleteQuestion = async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const userId = req.user.id;
+
+    const question = await Question.findById(questionId);
+    if (!question) return res.status(404).json({ message: "Question introuvable" });
+
+    const quiz = await Quiz.findById(question.quiz);
+    const offer = await Offer.findById(quiz.offer);
+
+    if (offer.companyId.toString() !== userId)
+      return res.status(403).json({ message: "Seul le propriétaire de l'offre peut supprimer cette question" });
+
+    await Question.findByIdAndDelete(questionId);
+    res.status(200).json({ message: "Question supprimée avec succès" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
