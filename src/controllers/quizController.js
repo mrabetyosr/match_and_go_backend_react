@@ -159,3 +159,26 @@ exports.getRandomQuizByOffer = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+////////////////// nombre de quiz////////////
+exports.getQuizCountByOffer = async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    const userId = req.user.id; // récupéré depuis verifyToken
+
+    
+    const offer = await Offer.findById(offerId);
+    if (!offer) return res.status(404).json({ message: "Offre introuvable" });
+
+    
+    if (offer.companyId.toString() !== userId) {
+      return res.status(403).json({ message: "Accès refusé : vous n'êtes pas le propriétaire de cette offre" });
+    }
+
+    const quizCount = offer.quizzes.length;
+
+    res.status(200).json({ offerId, quizCount });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
