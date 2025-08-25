@@ -12,7 +12,6 @@ const applyToOffer = async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
 
-   
     if (!user || user.role !== "candidate") {
       return res.status(403).json({ message: "Only candidates can apply." });
     }
@@ -26,7 +25,7 @@ const applyToOffer = async (req, res) => {
       return res.status(400).json({ message: "The offer is already closed." });
     }
 
-  
+   
     const existingApp = await Application.findOne({
       candidateId: user._id,
       offerId: offer._id,
@@ -35,12 +34,11 @@ const applyToOffer = async (req, res) => {
       return res.status(400).json({ message: "You have already applied to this offer." });
     }
 
-    
+   
     if (!req.files || !req.files.cv || !req.files.motivationLetter) {
       return res.status(400).json({ message: "CV and Motivation Letter are required" });
     }
 
-    
     const cvPath = req.files.cv[0].path;
     const motivationLetterPath = req.files.motivationLetter[0].path;
 
@@ -52,16 +50,18 @@ const applyToOffer = async (req, res) => {
       motivationLetter: motivationLetterPath,
       linkedin: req.body.linkedin || null,
       github: req.body.github || null,
+
       phoneNumber: req.body.phoneNumber || null,
       location: req.body.location || null,
       dateOfBirth: req.body.dateOfBirth ? new Date(req.body.dateOfBirth) : null,
-      email: req.body.email || user.email, // si tu veux utiliser email candidat
+
+      
+      email: user.email,
     });
 
     await application.save();
 
     res.status(201).json({ message: "Application submitted successfully", application });
-
   } catch (err) {
     if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
       return res.status(401).json({ message: "Invalid or expired token" });

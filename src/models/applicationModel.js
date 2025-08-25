@@ -27,6 +27,10 @@ const applicationSchema = new mongoose.Schema(
    
     linkedin: { type: String },
     github: { type: String },
+     phoneNumber: { type: String },
+    location: { type: String },
+    dateOfBirth: { type: Date },
+    email: { type: String }, // <-- auto rempli
   },
   { timestamps: true }
 );

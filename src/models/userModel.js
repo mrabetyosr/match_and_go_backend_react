@@ -35,8 +35,7 @@ const userSchema = new mongoose.Schema(
       phoneNumber: { type: String },
       location: { type: String },
       dateOfBirth: { type: Date },
-      linkedin: { type: String },
-      github: { type: String },
+      
    
 
     },
