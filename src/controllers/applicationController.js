@@ -101,4 +101,40 @@ const getMyApplications = async (req, res) => {
   }
 };
 
-module.exports = { applyToOffer, getMyApplications};
+// GET all submissions for an offer (only owner of the offer)
+const getOfferSubmissions = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+
+    if (!user) return res.status(403).json({ message: "User not found" });
+
+    const offerId = req.params.offerId;
+
+    
+    const offer = await Offer.findById(offerId);
+    if (!offer) return res.status(404).json({ message: "Offer not found" });
+
+    if (offer.companyId.toString() !== user._id.toString()) {
+      return res.status(403).json({ message: "Access denied. Only the offer owner can see submissions." });
+    }
+
+    // 3️⃣ Récupérer toutes les candidatures pour cette offre
+    const applications = await Application.find({ offerId: offer._id })
+      .populate("candidateId", "username email dateOfBirth phoneNumber location")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ applications });
+
+  } catch (err) {
+    if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { applyToOffer, getMyApplications, getOfferSubmissions };

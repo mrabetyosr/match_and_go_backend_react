@@ -1,7 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const { applyToOffer, getMyApplications } = require("../controllers/applicationController");
+const { applyToOffer, getMyApplications, getOfferSubmissions } = require("../controllers/applicationController");
 const upload = require("../middleware/uploadFile");
+const verifyToken = require("../middleware/authMiddleware");
 
 
 router.post(
@@ -18,5 +19,8 @@ router.get(
   "/my-applications",
   getMyApplications
 );
+
+// GET all submissions for an offer (only owner)
+router.get("/:offerId/submissions", verifyToken, getOfferSubmissions);
 
 module.exports = router;
