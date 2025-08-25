@@ -1,11 +1,10 @@
 const express = require("express");
 const dotenv = require("dotenv").config();
-const path = require("path");
 const fetch = require("node-fetch");
-const dbConnect = require("./config/dbConnect");
+const dbConnect = require("./config/dbConnect"); 
+const notificationRoutes = require("./routes/notificationRoutes");
 
-
-//gemini 
+// Gemini
 global.fetch = fetch;
 global.Headers = fetch.Headers;
 global.Request = fetch.Request;
@@ -20,28 +19,37 @@ const questionRoutes = require("./routes/questionRoutes");
 const quizRoutes = require("./routes/quizRoutes");
 const cors = require("cors");
 
-dbConnect(); // Connect to the database
+// Socket utils
+const { initSocket } = require("./utils/socket");
 
-//app configuration
+// Connect to DB
+dbConnect();
+
+// App configuration
 const app = express();
+const server = require("http").createServer(app);
 
-
-//middleware
-//app.use(cors()); //access from any frontend
+// Middleware
 app.use(cors({ origin: "http://localhost:3000" }));
 app.use(express.json());
 
-//routes
+// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/gemini", geminiRoutes); 
 app.use("/api/offers", offerRoutes);
 app.use("/api/questions", questionRoutes);
 app.use("/api/quiz", quizRoutes);
+app.use("/api/notify", notificationRoutes);
 
 
-//start the server
 const PORT = process.env.PORT || 7002;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Server is running at port ${PORT}`);
 });
+
+
+initSocket(server);
+
+
+module.exports = server;
