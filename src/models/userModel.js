@@ -31,6 +31,16 @@ const userSchema = new mongoose.Schema(
             default: "defaultCover.png" 
         },
 
+    candidateInfo: {
+      phoneNumber: { type: String },
+      location: { type: String },
+      dateOfBirth: { type: Date },
+      linkedin: { type: String },
+      github: { type: String },
+   
+
+    },
+
      companyInfo: {
     
       description: { type: String },

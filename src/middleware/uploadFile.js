@@ -1,18 +1,25 @@
 const multer = require("multer");
-const path = require('path')
-const fs = require('fs')
-var storage = multer.diskStorage({
+const path = require("path");
+const fs = require("fs");
+
+
+const uploadPath = "uploads/applications";
+
+if (!fs.existsSync(uploadPath)) {
+  fs.mkdirSync(uploadPath, { recursive: true });
+}
+
+
+const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'public/images')
+    cb(null, uploadPath);
   },
   filename: function (req, file, cb) {
-    const uploadPath = 'public/images';
     const originalName = file.originalname;
-    console.log(file.originalname)
     const fileExtension = path.extname(originalName);
     let fileName = originalName;
 
-    // Vérifier si le fichier existe déjà
+    
     let fileIndex = 1;
     while (fs.existsSync(path.join(uploadPath, fileName))) {
       const baseName = path.basename(originalName, fileExtension);
@@ -21,8 +28,21 @@ var storage = multer.diskStorage({
     }
 
     cb(null, fileName);
-  }
-})
+  },
+});
 
-var uploadfile = multer({ storage: storage });
-module.exports = uploadfile;
+// Filtrage des fichiers autorisés
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = [".pdf", ".doc", ".docx"];
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (allowedTypes.includes(ext)) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only PDF, DOC, DOCX are allowed"), false);
+  }
+};
+
+
+const uploadApplicationFiles = multer({ storage, fileFilter });
+
+module.exports = uploadApplicationFiles;

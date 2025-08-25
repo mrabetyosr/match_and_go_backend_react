@@ -4,6 +4,7 @@ const fetch = require("node-fetch");
 const dbConnect = require("./config/dbConnect"); 
 const notificationRoutes = require("./routes/notificationRoutes");
 
+
 // Gemini
 global.fetch = fetch;
 global.Headers = fetch.Headers;
@@ -17,6 +18,8 @@ const geminiRoutes = require("./routes/geminiRoutes");
 const offerRoutes = require("./routes/offerRoutes");
 const questionRoutes = require("./routes/questionRoutes");
 const quizRoutes = require("./routes/quizRoutes");
+const applicationRoutes = require("./routes/applicationRoutes");
+
 const cors = require("cors");
 
 // Socket utils
@@ -41,6 +44,8 @@ app.use("/api/offers", offerRoutes);
 app.use("/api/questions", questionRoutes);
 app.use("/api/quiz", quizRoutes);
 app.use("/api/notify", notificationRoutes);
+app.use("/api/applications", applicationRoutes);
+
 
 
 const PORT = process.env.PORT || 7002;
