@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { applyToOffer } = require("../controllers/applicationController");
+const { applyToOffer, getMyApplications } = require("../controllers/applicationController");
 const upload = require("../middleware/uploadFile");
 
 
@@ -11,6 +11,12 @@ router.post(
     { name: "motivationLetter", maxCount: 1 }
   ]),
   applyToOffer
+);
+
+//get all of my applications 
+router.get(
+  "/my-applications",
+  getMyApplications
 );
 
 module.exports = router;

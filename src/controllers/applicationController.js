@@ -70,4 +70,35 @@ const applyToOffer = async (req, res) => {
   }
 };
 
-module.exports = { applyToOffer };
+
+// GET all my applications candidate 
+const getMyApplications = async (req, res) => {
+  try {
+    // 1️⃣ Vérifier le token
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+
+  
+    if (!user || user.role !== "candidate") {
+      return res.status(403).json({ message: "Only candidates can view their applications." });
+    }
+
+    
+    const applications = await Application.find({ candidateId: user._id })
+      .populate("offerId", "title description companyName location applicationDeadline") // peupler les infos de l’offre
+      .sort({ createdAt: -1 }); // tri du plus récent au plus ancien
+
+    res.status(200).json({ applications });
+
+  } catch (err) {
+    if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { applyToOffer, getMyApplications};
