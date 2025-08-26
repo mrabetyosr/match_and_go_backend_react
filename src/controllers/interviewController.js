@@ -3,10 +3,9 @@ const Application = require("../models/applicationModel");
 const Offer = require("../models/offerModel");
 const User = require("../models/userModel");
 const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer"); // pour l'envoi de mail
+const nodemailer = require("nodemailer");
+const path = require("path");
 
-
-// POST /api/interviews/:applicationId
 const scheduleInterview = async (req, res) => {
   try {
     const token = req.headers.authorization?.split(" ")[1];
@@ -14,13 +13,11 @@ const scheduleInterview = async (req, res) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
-
     if (!user) return res.status(403).json({ message: "User not found" });
 
     const { applicationId } = req.params;
     const { date, meetLink, message } = req.body;
 
-    
     const application = await Application.findById(applicationId).populate("offerId");
     if (!application) return res.status(404).json({ message: "Application not found" });
 
@@ -37,10 +34,9 @@ const scheduleInterview = async (req, res) => {
       meetLink,
       message,
     });
-
     await interview.save();
 
-    // Envoyer un email au candidat
+    // Envoyer l'email au candidat
     const candidate = await User.findById(application.candidateId);
     if (candidate && candidate.email) {
       const transporter = nodemailer.createTransport({
@@ -51,13 +47,38 @@ const scheduleInterview = async (req, res) => {
         },
       });
 
+      // chemin vers ton logo
+      const logoPath = path.join(__dirname, "../assets/namelogo.png");
+
+      // HTML avec cid
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.5;">
+          <div style="text-align:center; margin-bottom:20px;">
+            <img src="cid:namelogo" alt="Match&Go Logo" style="width:120px;"/>
+          </div>
+          <h2 style="color:green;">Interview Scheduled!</h2>
+          <p>Dear <strong>${candidate.username}</strong>,</p>
+          <p>You have been selected for the position: <strong>${application.offerId.jobTitle}</strong>.</p>
+          <p><strong>Date & Time:</strong> ${new Date(date).toLocaleString()}</p>
+          <p><strong>Google Meet Link:</strong> <a href="${meetLink}" target="_blank" style="color:#3498db;">${meetLink}</a></p>
+          <p>${message}</p>
+          <p>Best regards,</p>
+          <p><strong>Match&Go Team</strong></p>
+        </div>
+      `;
+
       await transporter.sendMail({
         from: `"${user.username}" <${process.env.EMAIL_USER}>`,
         to: candidate.email,
-        subject: `Interview for your application to ${application.offerId.title}`,
-        html: `<p>${message}</p>
-               <p>Date: ${new Date(date).toLocaleString()}</p>
-               <p>Meet Link: <a href="${meetLink}">${meetLink}</a></p>`,
+        subject: `Interview Scheduled for "${application.offerId.jobTitle}"`,
+        html: emailHtml,
+        attachments: [
+          {
+            filename: "namelogo.png",
+            path: logoPath,
+            cid: "namelogo" // identifiant à utiliser dans <img src="cid:namelogo">
+          }
+        ]
       });
     }
 
@@ -70,6 +91,5 @@ const scheduleInterview = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
 
 module.exports = { scheduleInterview };

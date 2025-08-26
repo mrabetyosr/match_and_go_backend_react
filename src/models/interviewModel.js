@@ -22,4 +22,4 @@ const interviewSchema = new mongoose.Schema(
 
 module.exports =
   mongoose.models.Interview ||
-  mongoose.model("interviewModel", interviewSchema);
+  mongoose.model("interview", interviewSchema);
