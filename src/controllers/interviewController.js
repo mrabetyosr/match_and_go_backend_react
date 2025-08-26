@@ -219,4 +219,25 @@ const getInterviewsByOffer = async (req, res) => {
 };
 
 
-module.exports = { scheduleInterview,getInterviewsByOffer}
+/// Récupérer tous les entretiens pour le candidat connecté
+const getMyInterviews = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(403).json({ message: "User not found" });
+
+    const interviews = await Interview.find({ applicationId: { $in: await Application.find({ candidateId: user._id }).select("_id") } })
+      .populate("applicationId", "offerId")
+      .populate("scheduledBy", "username email");
+
+    res.status(200).json(interviews);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+module.exports = { scheduleInterview,getInterviewsByOffer,getMyInterviews}
