@@ -186,4 +186,37 @@ const scheduleInterview = async (req, res) => {
   }
 }
 
-module.exports = { scheduleInterview }
+
+////////////////// Récupérer tous les entretiens pour une offre (owner seulement)
+const getInterviewsByOffer = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(403).json({ message: "User not found" });
+
+    if (user.role !== "company") return res.status(403).json({ message: "Access denied. Only companies." });
+
+    const { offerId } = req.params;
+
+    const interviews = await Interview.find()
+      .populate({
+        path: "applicationId",
+        match: { offerId },
+        populate: { path: "candidateId", select: "username email" }
+      })
+      .populate("scheduledBy", "username email");
+
+    // Filtrer les interviews null (si aucune application ne correspond)
+    const filtered = interviews.filter(i => i.applicationId);
+
+    res.status(200).json(filtered);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+module.exports = { scheduleInterview,getInterviewsByOffer}
