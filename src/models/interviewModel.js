@@ -16,6 +16,7 @@ const interviewSchema = new mongoose.Schema(
     date: { type: Date, required: true },
     meetLink: { type: String, required: true },
     message: { type: String, required: true },
+    reminderSent: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

@@ -224,3 +224,155 @@ module.exports.getCompaniesByCategory = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+////////////////// nbr company /////////////////////////////////////
+
+module.exports.nbrcompany = async (req, res) => {
+  try {
+    // Compter tous les utilisateurs dont le rôle est "company"
+    const count = await User.countDocuments({ role: "company" });
+
+    res.status(200).json({ totalCompanies: count });
+  } catch (error) {
+    console.error("Error fetching company count:", error.message); // log côté serveur
+    res.status(500).json({ 
+      message: "Failed to get the number of companies.", 
+      error: error.message 
+    });
+  }
+};
+
+
+
+///////////////// nbr condidates ////////////////////////////////
+
+
+module.exports.nbrCandidate = async (req, res) => { 
+  try {
+    // Récupérer le token depuis les headers Authorization
+    const token = req.headers.authorization?.split(" ")[1]; // Bearer token
+    if (!token) 
+      return res.status(401).json({ message: "Access denied. No token provided." });
+
+    // Vérifier et décoder le token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const connectedUser = await User.findById(decoded.id);
+
+    // Vérifier que l'utilisateur est admin
+    if (!connectedUser || connectedUser.role !== "admin") {
+      return res.status(403).json({ message: "Access denied. Only admins can view candidate count." });
+    }
+
+    // Compter les utilisateurs de type candidate
+    const count = await User.countDocuments({ role: "candidate" });
+
+    // Retourner le résultat
+    res.status(200).json({ totalCandidates: count });
+
+  } catch (err) {
+    console.error("Error fetching candidate count:", err.message);
+    res.status(500).json({ message: "Failed to get candidate count.", error: err.message });
+  }
+};
+
+
+///////////////// getAllUserCounts ////////////////////////////////
+
+module.exports.getAllUserCounts = async (req, res) => {
+  try {
+    // Récupérer le token depuis les headers Authorization
+    const token = req.headers.authorization?.split(" ")[1]; // Bearer token
+    if (!token) 
+      return res.status(401).json({ message: "Access denied. No token provided." });
+
+    // Vérifier et décoder le token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const connectedUser = await User.findById(decoded.id);
+
+    // Vérifier que l'utilisateur est admin
+    if (!connectedUser || connectedUser.role !== "admin") {
+      return res.status(403).json({ message: "Access denied. Only admins can view user counts." });
+    }
+
+    // Compter les utilisateurs par rôle
+    const companyCount = await User.countDocuments({ role: "company" });
+    const candidateCount = await User.countDocuments({ role: "candidate" });
+
+    // Retourner les résultats
+    res.status(200).json({ 
+      totalCompanies: companyCount,
+      totalCandidates: candidateCount
+    });
+
+  } catch (err) {
+    console.error("Error fetching user counts:", err.message);
+    res.status(500).json({ message: "Failed to get user counts.", error: err.message });
+  }
+};
+
+
+///////////////// nbrCandidateLastWeek ////////////////////////////////
+
+module.exports.nbrCandidateLastWeek = async (req, res) => {
+  try {
+    // Récupérer le token depuis les headers Authorization
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) 
+      return res.status(401).json({ message: "Access denied. No token provided." });
+
+    // Vérifier et décoder le token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const connectedUser = await User.findById(decoded.id);
+
+    // Vérifier que l'utilisateur est admin
+    if (!connectedUser || connectedUser.role !== "admin") {
+      return res.status(403).json({ message: "Access denied. Only admins can view user counts." });
+    }
+
+    // Calculer la date d'il y a 7 jours
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    // Compter les candidats connectés dans la dernière semaine
+    const count = await User.countDocuments({
+      role: "candidate",
+      updatedAt: { $gte: sevenDaysAgo } // utilisateurs mis à jour dans la dernière semaine
+    });
+
+    res.status(200).json({ totalCandidatesLastWeek: count });
+
+  } catch (err) {
+    console.error("Error fetching candidate count for last week:", err.message);
+    res.status(500).json({ message: "Failed to get candidate count.", error: err.message });
+  }
+};
+
+///////////////// getCompaniesByCategory ////////////////////////////////
+
+
+module.exports.getCompaniesByCategory = async (req, res) => {
+  try {
+    const category = req.params.category;
+
+    if (!category) {
+      return res.status(400).json({ message: "Category parameter is required" });
+    }
+
+    const companies = await User.find({
+      role: "company",
+      "companyInfo.category": { $regex: new RegExp(`^${category}$`, "i") } // insensible à la casse
+    });
+
+    if (!companies.length) {
+      return res.status(404).json({ message: `No companies found for category: ${category}` });
+    }
+
+    res.status(200).json({
+      total: companies.length,
+      companies
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
