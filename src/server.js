@@ -19,6 +19,7 @@ const offerRoutes = require("./routes/offerRoutes");
 const questionRoutes = require("./routes/questionRoutes");
 const quizRoutes = require("./routes/quizRoutes");
 const applicationRoutes = require("./routes/applicationRoutes");
+const interviewRoutes = require("./routes/interviewRoutes");
 
 const cors = require("cors");
 
@@ -45,6 +46,7 @@ app.use("/api/questions", questionRoutes);
 app.use("/api/quiz", quizRoutes);
 app.use("/api/notify", notificationRoutes);
 app.use("/api/applications", applicationRoutes);
+app.use("/api/interviews", interviewRoutes);
 
 
 
