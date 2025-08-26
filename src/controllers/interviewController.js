@@ -239,5 +239,39 @@ const getMyInterviews = async (req, res) => {
   }
 };
 
+/////////recherche d'entretiens par date pour company et candidat
+const getInterviewsByDate = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided" });
 
-module.exports = { scheduleInterview,getInterviewsByOffer,getMyInterviews}
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(403).json({ message: "User not found" });
+
+    const { from, to, offerId } = req.query;
+    if (!from || !to) return res.status(400).json({ message: "from and to dates required" });
+
+    const filter = { date: { $gte: new Date(from), $lte: new Date(to) } };
+
+    if (user.role === "candidate") {
+      const apps = await Application.find({ candidateId: user._id }).select("_id");
+      filter.applicationId = { $in: apps };
+    } else if (user.role === "company" && offerId) {
+      const apps = await Application.find({ offerId }).select("_id");
+      filter.applicationId = { $in: apps };
+    }
+
+    const interviews = await Interview.find(filter)
+      .populate("applicationId", "candidateId offerId")
+      .populate("scheduledBy", "username email");
+
+    res.status(200).json(interviews);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+
+module.exports = { scheduleInterview,getInterviewsByOffer,getMyInterviews,getInterviewsByDate}
