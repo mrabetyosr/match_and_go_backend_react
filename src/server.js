@@ -47,6 +47,7 @@ app.use("/api/quiz", quizRoutes);
 app.use("/api/notify", notificationRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use("/api/interviews", interviewRoutes);
+app.use('/images', express.static('public/images'));
 
 
 
