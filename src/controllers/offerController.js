@@ -28,7 +28,7 @@ const addOfferCompany = async (req, res) => {
 //gel all offers 
 const getAllOffers = async (req, res) => {
   try {
-    const offers = await Offer.find().populate("companyId", "username companyInfo");
+const offers = await Offer.find().populate("companyId", "username companyInfo image_User cover_User");
     res.status(200).json(offers);
   } catch (err) {
     res.status(500).json({ message: err.message });

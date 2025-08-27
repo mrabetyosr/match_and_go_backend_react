@@ -8,7 +8,11 @@ const offerSchema = new mongoose.Schema(
       required: true,
     },
     jobTitle: { type: String, required: true },
-    jobType: { type: String, required: true },
+     jobType: { 
+    type: String, 
+    enum: ['PartTime', 'FullTime', 'Internship'],
+    required: true 
+  },
     remote: { type: Boolean, default: false },
     jobSalary: { type: Number, default: 0 },
     duration: { type: String },
