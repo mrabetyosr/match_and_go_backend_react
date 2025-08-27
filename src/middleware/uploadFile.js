@@ -2,13 +2,11 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
-
-const uploadPath = "uploads/applications";
+const uploadPath = "public/images";
 
 if (!fs.existsSync(uploadPath)) {
   fs.mkdirSync(uploadPath, { recursive: true });
 }
-
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -19,7 +17,6 @@ const storage = multer.diskStorage({
     const fileExtension = path.extname(originalName);
     let fileName = originalName;
 
-    
     let fileIndex = 1;
     while (fs.existsSync(path.join(uploadPath, fileName))) {
       const baseName = path.basename(originalName, fileExtension);
@@ -33,15 +30,15 @@ const storage = multer.diskStorage({
 
 // Filtrage des fichiers autorisés
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = [".pdf", ".doc", ".docx"];
+  // Ajout de .png et .jpg
+  const allowedTypes = [".pdf", ".doc", ".docx", ".png", ".jpg", ".jpeg"];
   const ext = path.extname(file.originalname).toLowerCase();
   if (allowedTypes.includes(ext)) {
     cb(null, true);
   } else {
-    cb(new Error("Only PDF, DOC, DOCX are allowed"), false);
+    cb(new Error("Only PDF, DOC, DOCX, PNG, JPG, JPEG are allowed"), false);
   }
 };
-
 
 const uploadApplicationFiles = multer({ storage, fileFilter });
 
