@@ -376,3 +376,17 @@ module.exports.getCompaniesByCategory = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+//////////////////// get current logged-in user///////////////////
+module.exports.getCurrentUser = async (req, res) => {
+  try {
+    const userId = req.user.id; // req.user vient de verifyToken
+    const user = await User.findById(userId).select("email firstName lastName");
+    if (!user) return res.status(404).json({ message: "Utilisateur non trouvé" });
+
+    res.status(200).json(user);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
