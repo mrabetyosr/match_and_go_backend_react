@@ -79,4 +79,19 @@ const deleteOfferCompany = async (req, res) => {
   }
 };
 
-module.exports = { addOfferCompany,getAllOffers,deleteOfferCompany };
+
+//////////////////////////get offer by id /////////////////////////
+const getOfferById = async (req, res) => {
+  try {
+    const offer = await Offer.findById(req.params.id)
+      .populate("companyId", "username companyInfo image_User cover_User"); // popule les infos de la company
+    if (!offer) return res.status(404).json({ message: "Offer not found" });
+
+    res.status(200).json(offer); // renvoie toutes les infos de l'offre
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+module.exports = { addOfferCompany,getAllOffers,deleteOfferCompany,getOfferById };
