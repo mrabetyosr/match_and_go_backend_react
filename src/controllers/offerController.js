@@ -94,4 +94,24 @@ const getOfferById = async (req, res) => {
 };
 
 
-module.exports = { addOfferCompany,getAllOffers,deleteOfferCompany,getOfferById };
+// Récupérer toutes les offres d'une company connectée
+
+
+ const getMyOffers = async (req, res) => {
+  try {
+    if (req.user.role !== "company") {
+      return res.status(403).json({ message: "Accès réservé aux entreprises" });
+    }
+
+    const offers = await Offer.find({ companyId: req.user.id })
+      .populate("quizzes") // pour voir aussi les quiz rattachés
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ offers });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+module.exports = { addOfferCompany,getAllOffers,deleteOfferCompany,getOfferById,getMyOffers };
