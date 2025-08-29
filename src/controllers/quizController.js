@@ -198,10 +198,8 @@ exports.publishQuiz = async (req, res) => {
 
     const quiz = await Quiz.findById(quizId).populate("offer");
     if (!quiz) return res.status(404).json({ message: "Quiz not found" });
-
     if (quiz.offer.companyId.toString() !== userId)
       return res.status(403).json({ message: "You are not allowed to publish this quiz" });
-
     if (quiz.isPublished)
       return res.status(400).json({ message: "This quiz is already published" });
 
@@ -210,11 +208,7 @@ exports.publishQuiz = async (req, res) => {
 
     const owner = await User.findById(userId);
     if (owner && owner.email) {
-      await sendEmail(
-        owner.email,
-        "Quiz Published",
-        `The quiz "${quiz.title}" for the offer "${quiz.offer.jobTitle}" is now published.`
-      );
+      await sendEmail(owner.email, quiz); // <-- ici on passe l'objet quiz directement
     }
 
     res.status(200).json({ message: "Quiz published successfully", quiz });
