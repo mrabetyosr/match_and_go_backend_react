@@ -114,4 +114,47 @@ const getOfferById = async (req, res) => {
 };
 
 
-module.exports = { addOfferCompany,getAllOffers,deleteOfferCompany,getOfferById,getMyOffers };
+/////////////////////////////////::::Update offer (only by owner or admin)/////////////////////////////////////
+const updateOfferByOwner = async (req, res) => {
+  try {
+    // 1) Vérifier le token
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "Invalid token" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(403).json({ message: "Access denied" });
+
+    // 2) Valider l'ID de l'offre
+    const offerId = req.params.id;
+    if (!isValidObjectId(offerId)) {
+      return res.status(400).json({ message: "Invalid offer id" });
+    }
+
+    // 3) Récupérer l'offre
+    const offer = await Offer.findById(offerId);
+    if (!offer) return res.status(404).json({ message: "Offer not found" });
+
+    // 4) Vérifier que l'utilisateur est le propriétaire ou admin
+    const isOwner = offer.companyId.toString() === user._id.toString();
+    const isAdmin = user.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: "Access denied. Only the owner or an admin can update this offer." });
+    }
+
+    // 5) Mettre à jour l'offre
+    Object.assign(offer, req.body); // met à jour seulement les champs envoyés
+    await offer.save();
+
+    res.status(200).json({ message: "Offer updated successfully", offer });
+
+  } catch (err) {
+    if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { addOfferCompany,getAllOffers,deleteOfferCompany,getOfferById,getMyOffers,updateOfferByOwner };

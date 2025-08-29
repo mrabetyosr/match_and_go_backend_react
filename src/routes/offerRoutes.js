@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { addOfferCompany,getAllOffers,deleteOfferCompany,getOfferById,getMyOffers } = require("../controllers/offerController");
+const { addOfferCompany,getAllOffers,deleteOfferCompany,getOfferById,getMyOffers,updateOfferByOwner } = require("../controllers/offerController");
 const verifyToken = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
 const { createQuizForOffer,getAllQuizByOffer,updateQuiz,deleteQuizByOwner,getRandomQuizByOffer,getQuizCountByOffer,publishQuiz} = require("../controllers/quizController");
@@ -45,4 +45,8 @@ router.get("/myOffers", verifyToken, authorizeRoles("company"), getMyOffers);
 
 // Récupérer une offre par son ID
 router.get("/:id", getOfferById);
+
+
+// Update offer (only owner or admin)
+router.put("/update/:id", verifyToken, authorizeRoles("company"), updateOfferByOwner);
 module.exports = router;
