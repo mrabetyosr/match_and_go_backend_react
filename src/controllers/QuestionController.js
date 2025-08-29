@@ -6,7 +6,7 @@ const Offer = require("../models/offerModel");
 exports.addQuestionToQuiz = async (req, res) => {
   try {
     const { quizId } = req.params;
-    const { text, correctAnswer, wrongAnswers, score = 1 } = req.body;
+    const { questionText, correctAnswer, choices, questionType = "multiple-choice", score = 1 } = req.body;
     const userId = req.user.id;
 
     const quiz = await Quiz.findById(quizId);
@@ -18,14 +18,26 @@ exports.addQuestionToQuiz = async (req, res) => {
     if (offer.companyId.toString() !== userId)
       return res.status(403).json({ message: "You are not authorized to add a question" });
 
-    // Calculate the order of the new question
+    // Ensure correctAnswer is included in choices
+    if (!choices.includes(correctAnswer)) {
+      return res.status(400).json({ message: "Correct answer must be one of the choices." });
+    }
+
+    // Calculate order
     const questionCount = await Question.countDocuments({ quiz: quizId });
     const order = questionCount + 1;
 
     // Create the question
-    const question = await Question.create({ quiz: quizId, text, correctAnswer, wrongAnswers, score, order });
+    const question = await Question.create({
+      quiz: quizId,
+      questionText,
+      questionType,
+      choices,
+      correctAnswer,
+      score,
+      order,
+    });
 
-    // Automatically recalc total score and number of questions
     await recalcQuizStats(quizId);
 
     res.status(201).json(question);
@@ -49,7 +61,7 @@ exports.getQuestionsByQuiz = async (req, res) => {
 exports.updateQuestion = async (req, res) => {
   try {
     const { questionId } = req.params;
-    const { text, correctAnswer, wrongAnswers, score, order } = req.body;
+    const { questionText, correctAnswer, choices, score, order, questionType } = req.body;
     const userId = req.user.id;
 
     const question = await Question.findById(questionId);
@@ -61,11 +73,17 @@ exports.updateQuestion = async (req, res) => {
     if (offer.companyId.toString() !== userId)
       return res.status(403).json({ message: "Only the owner of the offer can update this question" });
 
-    if (text) question.text = text;
-    if (correctAnswer) question.correctAnswer = correctAnswer;
-    if (wrongAnswers) question.wrongAnswers = wrongAnswers;
+    if (questionText) question.questionText = questionText;
+    if (correctAnswer) {
+      if (choices && !choices.includes(correctAnswer)) {
+        return res.status(400).json({ message: "Correct answer must be in choices." });
+      }
+      question.correctAnswer = correctAnswer;
+    }
+    if (choices) question.choices = choices;
     if (score !== undefined) question.score = score;
     if (order !== undefined) question.order = order;
+    if (questionType) question.questionType = questionType;
 
     await question.save();
     res.status(200).json(question);
@@ -90,13 +108,15 @@ exports.deleteQuestion = async (req, res) => {
       return res.status(403).json({ message: "Only the owner of the offer can delete this question" });
 
     await Question.findByIdAndDelete(questionId);
+    await recalcQuizStats(quiz._id);
+
     res.status(200).json({ message: "Question deleted successfully" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-// Recalculate quiz score
+// Recalculate quiz stats
 const recalcQuizStats = async (quizId) => {
   const questions = await Question.find({ quiz: quizId });
   const totalScore = questions.reduce((sum, q) => sum + q.score, 0);
