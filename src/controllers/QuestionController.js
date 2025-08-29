@@ -86,6 +86,7 @@ exports.updateQuestion = async (req, res) => {
     if (questionType) question.questionType = questionType;
 
     await question.save();
+    await recalcQuizStats(question.quiz); 
     res.status(200).json(question);
   } catch (err) {
     res.status(500).json({ message: err.message });
