@@ -47,7 +47,7 @@ const userSchema = new mongoose.Schema(
       category: { 
         type: String, 
         enum: [
-             "Tech",
+            "Tech",
             "Advertising&Marketing",
             "Culture&Media",
             "Consulting&Audit",
@@ -59,7 +59,7 @@ const userSchema = new mongoose.Schema(
       size: { type: String },
       website: { type: String },
       socialLinks: { 
-        linkedin: { type: String } 
+      linkedin: { type: String } 
       },
     },
 },

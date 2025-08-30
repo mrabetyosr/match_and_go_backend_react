@@ -4,60 +4,68 @@ const User = require("../models/userModel");
 
 const register = async (req, res) => {
   try {
-    const { username, email, password, role } = req.body;
-
-    // Vérifier que les champs obligatoires sont présents
-    if (!username || !email || !password) {
-      return res.status(400).json({ message: "Please provide username, email and password" });
-    }
-
+    const { username, email, password, role, location, category, founded, size, website, linkedin } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = new User({
       username,
       email,
       password: hashedPassword,
-      role: role || "candidate" 
+      role: role || "candidate",
     });
+
+    // 🔥 Si c'est une entreprise, on ajoute les infos spécifiques
+    if (role === "company") {
+      newUser.companyInfo = {
+        location,
+        category,
+        founded,
+        size,
+        website,
+        linkedin
+      };
+    }
 
     await newUser.save();
 
-    res.status(201).json({ message: `User registered with email ${email}` });
+    res.status(201).json({ 
+      message: `User registered with username ${username}`, 
+      role: newUser.role 
+    });
   } catch (err) {
-    console.error(err); 
-    res.status(500).json({ message: "Something went wrong" });
+    console.error(err);
+    res.status(500).json({ message: "something went wrong" });
   }
 };
 
 
 
 
+
+
 const login = async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res
-            .status(404)
-            .json({ message: `User with  email ${email} not found` });
-        }
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res
-            .status(400)
-            .json({ message: "Invalid credentials" });
-        }
-        const token = jwt.sign(
-            { id: user._id, role: user.role },
-            process.env.JWT_SECRET,
-            { expiresIn: "24h" }
-        );
-        res.status(200).json({ token });
-        
-    }    catch (err) {
-        res.status(500).json({ message: "something went wrong" });
+   try { 
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user) {
+        return res.status(404).json({message: `User with username ${email} not found`})
+    } 
+
+    const isMatch = await bcrypt.compare(password, user.password)
+    if(!isMatch){
+        return res.status(400).json({message : `Invalid credentails`})
+    }
+
+    const token = jwt.sign({id: user._id, role: user.role},process.env.JWT_SECRET,{ expiresIn: "1h" });
+    
+    res.status(200).json({ token })
+}
+    catch (err) {
+        res.status(500).json({message:`Something went wrong`})
     }
 };
+
 // current user
 const getCurrentUser = async (req, res) => {
     try {
