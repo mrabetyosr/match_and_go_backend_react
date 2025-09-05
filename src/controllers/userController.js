@@ -118,12 +118,12 @@ module.exports.DeleteUserById = async (req, res) => {
 
 module.exports.updateUserInfo = async (req, res) => {
   try {
-    const userId = req.user.id; 
-    const { username, image_User, companyInfo } = req.body || {};
+    const userId = req.user.id;
+    const { username, image_User, email, candidateInfo, companyInfo } = req.body || {};
 
     const updateData = {};
 
-   
+    // Update username
     if (username) {
       const existingUser = await User.findOne({ username, _id: { $ne: userId } });
       if (existingUser) {
@@ -132,25 +132,50 @@ module.exports.updateUserInfo = async (req, res) => {
       updateData.username = username;
     }
 
-   
+    // Update email
+    if (email) {
+      const existingEmail = await User.findOne({ email, _id: { $ne: userId } });
+      if (existingEmail) {
+        return res.status(400).json({ message: "Email déjà utilisé" });
+      }
+      updateData.email = email;
+    }
+
+    // Update profile image
     if (image_User) {
       updateData.image_User = image_User;
     }
 
-
-    if (companyInfo) {
-      
-      const company = typeof companyInfo === "string" ? JSON.parse(companyInfo) : companyInfo;
-
-      updateData.companyInfo = {};
-      const allowedFields = ["description", "location", "category", "founded", "size", "website", "socialLinks"];
+    // Update candidate info
+    if (candidateInfo) {
+      const candidate = typeof candidateInfo === "string" ? JSON.parse(candidateInfo) : candidateInfo;
+      updateData.candidateInfo = {};
+      const allowedFields = ["phoneNumber", "location", "dateOfBirth"];
       allowedFields.forEach(field => {
-        if (company[field] !== undefined) {
-          updateData.companyInfo[field] = company[field];
+        if (candidate[field] !== undefined) {
+          updateData.candidateInfo[field] = candidate[field];
         }
       });
     }
 
+    // Update company info
+    if (companyInfo) {
+      const company = typeof companyInfo === "string" ? JSON.parse(companyInfo) : companyInfo;
+      updateData.companyInfo = {};
+      const allowedFields = ["description", "location", "category", "founded", "size", "website", "socialLinks"];
+      allowedFields.forEach(field => {
+        if (company[field] !== undefined) {
+          // Ensure socialLinks is an object
+          if (field === "socialLinks" && typeof company[field] === "string") {
+            updateData.companyInfo[field] = JSON.parse(company[field]);
+          } else {
+            updateData.companyInfo[field] = company[field];
+          }
+        }
+      });
+    }
+
+    // Update the user
     const updatedUser = await User.findByIdAndUpdate(userId, updateData, { new: true });
 
     if (!updatedUser) {
@@ -160,7 +185,8 @@ module.exports.updateUserInfo = async (req, res) => {
     res.status(200).json(updatedUser);
 
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error(err);
+    res.status(500).json({ message: "Erreur serveur: " + err.message });
   }
 };
 
@@ -381,12 +407,16 @@ module.exports.getCompaniesByCategory = async (req, res) => {
 //////////////////// get current logged-in user///////////////////
 module.exports.getCurrentUser = async (req, res) => {
   try {
-    const userId = req.user.id; // req.user vient de verifyToken
-    const user = await User.findById(userId).select("email firstName lastName");
-    if (!user) return res.status(404).json({ message: "Utilisateur non trouvé" });
+    const userId = req.user.id; // req.user comes from verifyToken middleware
 
-    res.status(200).json(user);
+    // Find user by ID, include all fields except password
+    const user = await User.findById(userId).select("-password");
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.status(200).json(user); // send all user data
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error(err);
+    res.status(500).json({ message: "Something went wrong" });
   }
 };
