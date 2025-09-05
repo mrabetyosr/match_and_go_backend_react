@@ -137,4 +137,45 @@ const getOfferSubmissions = async (req, res) => {
   }
 };
 
-module.exports = { applyToOffer, getMyApplications, getOfferSubmissions };
+// UPDATE application status (only by company who owns the offer)
+const updateApplicationStatus = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+
+    if (!user || user.role !== "company") {
+      return res.status(403).json({ message: "Only companies can update application status." });
+    }
+
+    const applicationId = req.params.applicationId;
+    const { status } = req.body;
+
+    // Find the application and populate the offer to check ownership
+    const application = await Application.findById(applicationId).populate('offerId');
+    
+    if (!application) {
+      return res.status(404).json({ message: "Application not found" });
+    }
+
+    // Check if the company owns the offer
+    if (application.offerId.companyId.toString() !== user._id.toString()) {
+      return res.status(403).json({ message: "Access denied. You can only update applications for your own offers." });
+    }
+
+    // Update the application status
+    application.status = status;
+    await application.save();
+
+    res.status(200).json({ message: "Status updated successfully", application });
+  } catch (err) {
+    if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { applyToOffer, getMyApplications, getOfferSubmissions, updateApplicationStatus };
