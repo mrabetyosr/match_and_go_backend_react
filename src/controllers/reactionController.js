@@ -1,8 +1,12 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
 const Reaction = require("../models/reactionModel");
+const Post = require("../models/postModel");
 const Comment = require("../models/commentModel");
 const Reply = require("../models/replyModel"); 
+
+
+
 
 
 /////////////////////// REACTION CONTROLLER → create a new reaction (on post, comment, or reply; only candidate or company) ///////////////////////
@@ -20,19 +24,16 @@ module.exports.creatreact = async (req, res) => {
       return res.status(403).json({ message: "Only candidates and companies can react." });
     }
 
-    // 📥 Récup params & body
+    // 📥 Get params & body
     const { type } = req.body;
     const { postId, commentId, replyId } = req.params;
 
-    if (!type) {
-      return res.status(400).json({ message: "The type of reaction is mandatory." });
-    }
-
+    if (!type) return res.status(400).json({ message: "The type of reaction is mandatory." });
     if (!postId && !commentId && !replyId) {
-      return res.status(400).json({ message: "A reaction must target a post, a comment OR a response." });
+      return res.status(400).json({ message: "A reaction must target a post, a comment OR a reply." });
     }
 
-    // ✅ Vérifier l'existence de la cible
+    // ✅ Vérifier existence du target
     if (postId) {
       const post = await Post.findById(postId);
       if (!post) return res.status(404).json({ message: "Post not found." });
@@ -43,23 +44,31 @@ module.exports.creatreact = async (req, res) => {
     }
     if (replyId) {
       const reply = await Reply.findById(replyId);
-      if (!reply) return res.status(404).json({ message: "Answer not found." });
+      if (!reply) return res.status(404).json({ message: "Reply not found." });
     }
 
-    // ⚡ Vérifier si l’utilisateur a déjà fait la même réaction
+    // ⚡ Vérifier si une réaction existe déjà (peu importe le type)
     let existingReaction = await Reaction.findOne({
       user: connectedUser._id,
-      type,
       ...(postId ? { post: postId } : {}),
       ...(commentId ? { comment: commentId } : {}),
       ...(replyId ? { reply: replyId } : {}),
     });
 
     if (existingReaction) {
-      return res.status(400).json({ message: "You have already added this reaction." });
+      if (existingReaction.type === type) {
+        // 🔹 Même type → toggle (supprimer)
+        await existingReaction.deleteOne();
+        return res.status(200).json({ message: "Reaction removed." });
+      } else {
+        // 🔹 Autre type → update
+        existingReaction.type = type;
+        await existingReaction.save();
+        return res.status(200).json({ message: "Reaction updated.", reaction: existingReaction });
+      }
     }
 
-    // ✅ Créer la réaction
+    // ✅ Créer une nouvelle réaction
     const reaction = await Reaction.create({
       type,
       user: connectedUser._id,
@@ -74,6 +83,7 @@ module.exports.creatreact = async (req, res) => {
     return res.status(500).json({ message: "Server error.", error: error.message });
   }
 };
+
 
 
 
@@ -486,3 +496,53 @@ module.exports.listReactionsComment = async (req, res) => {
     return res.status(500).json({ message: "Server error.", error: error.message });
   }
 };
+
+
+
+
+
+///////////////
+
+module.exports.removeReaction = async (req, res) => {
+  try {
+    // 🔑 Vérif token
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "Access denied. No token provided." });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const connectedUser = await User.findById(decoded.id);
+
+    if (!connectedUser || !["candidate", "company"].includes(connectedUser.role)) {
+      return res.status(403).json({ message: "Only candidates and companies can remove reactions." });
+    }
+
+    const { postId, commentId, replyId } = req.params;
+
+    if (!postId && !commentId && !replyId) {
+      return res.status(400).json({ message: "A reaction must target a post, a comment OR a reply." });
+    }
+
+    // 🔍 Chercher la réaction existante
+    const existingReaction = await Reaction.findOne({
+      user: connectedUser._id,
+      ...(postId ? { post: postId } : {}),
+      ...(commentId ? { comment: commentId } : {}),
+      ...(replyId ? { reply: replyId } : {}),
+    });
+
+    if (!existingReaction) {
+      return res.status(404).json({ message: "No reaction found to remove." });
+    }
+
+    // ❌ Supprimer la réaction
+    await existingReaction.deleteOne();
+
+    return res.status(200).json({ message: "Reaction successfully removed." });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error.", error: error.message });
+  }
+};
+
+
+

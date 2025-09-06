@@ -2,8 +2,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
 const Comment = require("../models/commentModel");
 const Reply = require("../models/replyModel");
-const Reaction = require("../models/reactionModel"); 
-
+const Reaction = require("../models/reactionModel"); // 👈 add this
 
 
 
@@ -105,5 +104,46 @@ module.exports.deletereply = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+
+
+
+
+// controllers/replyController.js
+module.exports.listreplycomment = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({ message: "Access denied. No token provided." });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const connectedUser = await User.findById(decoded.id);
+
+    if (!connectedUser || !["candidate", "company"].includes(connectedUser.role)) {
+      return res.status(403).json({ message: "Only candidates and companies can view replies." });
+    }
+
+    const { commentId } = req.params;
+
+    // Vérifier que le commentaire existe
+    const comment = await Comment.findById(commentId);
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found." });
+    }
+
+    // Récupérer toutes les replies pour ce commentaire
+    const replies = await Reply.find({ comment: commentId })
+      .populate("author", "username logo role")  // inclure info de l'auteur
+      .sort({ createdAt: 1 }); // optionnel: trier par date
+
+    return res.status(200).json({ replies });
+    
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error", error: error.message });
   }
 };

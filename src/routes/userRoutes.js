@@ -77,8 +77,16 @@ router.get("/companies/category/:category", userController.getCompaniesByCategor
 /////////////////////// POST & SHARE ROUTES → create, list, share posts and get share counts ///////////////////////
 
 // create a new post (only candidate or company, requires token, supports photo upload)
-router.post("/posts/create",verifyToken,authorizeRoles("candidate", "company"),uploadfile.single("photo"),postController.creerPost); 
-
+router.post(
+  "/posts/create",
+  verifyToken,
+  authorizeRoles("candidate", "company"),
+  uploadfile.fields([
+    { name: "photo", maxCount: 1 },
+    { name: "document", maxCount: 1 }
+  ]),
+  postController.creerPost
+);
 // GET /posts → retrieve all posts (accessible by candidate, company, or admin, requires token)
 router.get("/posts",verifyToken,authorizeRoles("candidate", "company", "admin"),postController.listPosts);
 
@@ -175,4 +183,30 @@ router.get("/replies/:replyId/reactions",verifyToken,authorizeRoles("candidate",
 ////////:::::::get current user info ::::::::::////////
 router.get("/me", verifyToken, getCurrentUser);
 
+
+
+
+
+router.delete(
+  "/posts/:postId/reactions",
+  verifyToken,
+  authorizeRoles("candidate", "company"),
+  reactionController.removeReaction
+);
+
+// Supprimer reaction sur un commentaire
+router.delete(
+  "/comments/:commentId/reactions",
+  verifyToken,
+  authorizeRoles("candidate", "company"),
+  reactionController.removeReaction
+);
+
+// Supprimer reaction sur une réponse (reply)
+router.delete(
+  "/replies/:replyId/reactions",
+  verifyToken,
+  authorizeRoles("candidate", "company"),
+  reactionController.removeReaction
+);
 module.exports = router;
