@@ -252,28 +252,42 @@ module.exports.listPostsByUser = async (req, res) => {
 
     // 📌 Get all posts by that user
     const posts = await Post.find({ author: userId })
-      .populate("author", "username role logo")
+      .populate("author", "username role logo") // author details
       .sort({ createdAt: -1 });
 
     if (!posts.length) {
       return res.status(404).json({ message: "No posts found for this user." });
     }
 
-    // 🔄 Add reaction + comment counts
-    const postsWithCounts = await Promise.all(
+    // 🔄 Add reaction + comment + shares details
+    const postsWithDetails = await Promise.all(
       posts.map(async (post) => {
-        const reactionsCount = await Reaction.countDocuments({ post: post._id });
-        const commentsCount = await Comment.countDocuments({ post: post._id });
+        // Get reactions with user info
+        const reactions = await Reaction.find({ post: post._id })
+          .populate("user", "username role logo");
+
+        // Get comments with author info
+        const comments = await Comment.find({ post: post._id })
+          .populate("author", "username role logo")
+          .sort({ createdAt: -1 });
+
+        // Get shares with user info (assuming you have a Share model)
+        const shares = await Share.find({ post: post._id })
+          .populate("user", "username role logo");
 
         return {
           ...post.toObject(),
-          reactionsCount,
-          commentsCount,
+          reactionsCount: reactions.length,
+          reactions, // detailed reactions with user
+          commentsCount: comments.length,
+          comments, // detailed comments
+          sharesCount: shares.length,
+          shares, // detailed shares with user
         };
       })
     );
 
-    return res.status(200).json(postsWithCounts);
+    return res.status(200).json(postsWithDetails);
   } catch (error) {
     console.error(error);
     return res
@@ -281,6 +295,7 @@ module.exports.listPostsByUser = async (req, res) => {
       .json({ message: "Server error.", error: error.message });
   }
 };
+
 
 
 
