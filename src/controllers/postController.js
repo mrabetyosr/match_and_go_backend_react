@@ -1,10 +1,10 @@
 const jwt = require("jsonwebtoken");
+const Post = require("../models/postModel");
 const User = require("../models/userModel");
 const Comment = require("../models/commentModel");
 const Reaction = require("../models/reactionModel");
 const Share = require("../models/shareModel");
 const Reply = require("../models/replyModel");
-const Post = require("../models/postModel");
 
 
 
@@ -15,7 +15,8 @@ const Post = require("../models/postModel");
 module.exports.creerPost = async (req, res) => {
   try {
     const token = req.headers.authorization?.split(" ")[1];
-    if (!token) return res.status(401).json({ message: "Access denied. No token provided." });
+    if (!token) 
+      return res.status(401).json({ message: "Access denied. No token provided." });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const connectedUser = await User.findById(decoded.id);
@@ -25,27 +26,27 @@ module.exports.creerPost = async (req, res) => {
     }
 
     const content = req.body.content;
-    if (!content) return res.status(400).json({ message: "Post content is required." });
+    if (!content) 
+      return res.status(400).json({ message: "Post content is required." });
 
-    // mediaUrl pour les fichiers secondaires et photo pour l'image principale
-    const mediaUrl = req.body.mediaUrl || undefined;
-    const photo = req.file ? `/images/${req.file.filename}` : undefined;
+    // ✅ Build post object conditionally
+    const postData = { author: connectedUser._id, content };
 
-    const post = new Post({
-      author: connectedUser._id,
-      content,
-      mediaUrl,
-      photo
-    });
+    if (req.body.mediaUrl) postData.mediaUrl = req.body.mediaUrl;
+    if (req.files?.photo?.length > 0) postData.photo = `/images/${req.files.photo[0].filename}`;
+    if (req.files?.document?.length > 0) postData.document = `/images/${req.files.document[0].filename}`;
 
+    const post = new Post(postData);
     await post.save();
+
     res.status(201).json({ message: "Post successfully created", post });
 
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "server error", error: error.message });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 
 
@@ -168,7 +169,14 @@ module.exports.removePost = async (req, res) => {
   }
 };
 
+
+
+
+
+
 /////////////////////// POST CONTROLLER → Get all posts (with reactions & comments count) ///////////////////////
+
+
 
 module.exports.listPosts = async (req, res) => {
   try {
@@ -191,16 +199,18 @@ module.exports.listPosts = async (req, res) => {
       .populate("author", "username role logo")
       .sort({ createdAt: -1 });
 
-    // 🔄 Ajouter nb de réactions et de commentaires pour chaque post
+    // 🔄 Ajouter nb de réactions, de commentaires et de partages pour chaque post
     const postsWithCounts = await Promise.all(
       posts.map(async (post) => {
         const reactionsCount = await Reaction.countDocuments({ post: post._id });
         const commentsCount = await Comment.countDocuments({ post: post._id });
+        const sharesCount = await Share.countDocuments({ post: post._id });
 
         return {
           ...post.toObject(),
           reactionsCount,
           commentsCount,
+          sharesCount, // 🔹 Added share count
         };
       })
     );
@@ -213,6 +223,7 @@ module.exports.listPosts = async (req, res) => {
       .json({ message: "Erreur serveur.", error: error.message });
   }
 };
+
 
 
 
@@ -268,5 +279,51 @@ module.exports.listPostsByUser = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Server error.", error: error.message });
+  }
+};
+
+
+
+
+
+/////////////////////// POST CONTROLLER → Get posts with many reactions & comments ///////////////////////
+
+module.exports.listpostwithmanyreaction = async (req, res) => {
+  try {
+    // 📌 Récupérer tous les posts + infos de l’auteur
+    const posts = await Post.find()
+      .populate("author", "username role logo")
+      .sort({ createdAt: -1 });
+
+    // 🔄 Ajouter nb de réactions, commentaires et partages pour chaque post
+    const postsWithCounts = await Promise.all(
+      posts.map(async (post) => {
+        const reactionsCount = await Reaction.countDocuments({ post: post._id });
+        const commentsCount = await Comment.countDocuments({ post: post._id });
+        const sharesCount = await Share.countDocuments({ post: post._id });
+
+        return {
+          ...post.toObject(),
+          reactionsCount,
+          commentsCount,
+          sharesCount,
+        };
+      })
+    );
+
+    // 🔥 Filtrer uniquement les posts qui ont > 5 réactions
+    const filteredPosts = postsWithCounts.filter(
+      (post) => post.reactionsCount >= 1
+    );
+
+    // 🔥 Trier par nb de réactions décroissant
+    filteredPosts.sort((a, b) => b.reactionsCount - a.reactionsCount);
+
+    return res.status(200).json(filteredPosts);
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ message: "Erreur serveur.", error: error.message });
   }
 };

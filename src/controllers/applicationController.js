@@ -81,16 +81,24 @@ const getMyApplications = async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
 
-  
+    // 2️⃣ Vérifier que l'utilisateur est un candidat
     if (!user || user.role !== "candidate") {
       return res.status(403).json({ message: "Only candidates can view their applications." });
     }
 
-    
+    // 3️⃣ Récupérer toutes les applications du candidat
     const applications = await Application.find({ candidateId: user._id })
-      .populate("offerId", "title description companyName location applicationDeadline") // peupler les infos de l’offre
+      .populate({
+        path: "offerId",
+        select: "jobTitle description applicationDeadline companyId",
+        populate: {
+          path: "companyId",
+          select: "username image_User companyInfo.location companyInfo.description" // infos complètes de l'entreprise
+        }
+      })
       .sort({ createdAt: -1 }); // tri du plus récent au plus ancien
 
+    // 4️⃣ Retourner la réponse
     res.status(200).json({ applications });
 
   } catch (err) {
@@ -100,6 +108,7 @@ const getMyApplications = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
 
 // GET all submissions for an offer (only owner of the offer)
 const getOfferSubmissions = async (req, res) => {

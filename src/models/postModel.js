@@ -17,7 +17,8 @@ const postSchema = new mongoose.Schema(
     },
     content: { type: String, required: true },
     mediaUrl: { type: String },
-    photo: { type: String, default: "client.png" }
+    photo: { type: String },      // Removed default
+    document: { type: String }    // Removed default
   },
   {
     timestamps: true
