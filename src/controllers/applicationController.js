@@ -39,8 +39,8 @@ const applyToOffer = async (req, res) => {
       return res.status(400).json({ message: "CV and Motivation Letter are required" });
     }
 
-    const cvPath = req.files.cv[0].path;
-    const motivationLetterPath = req.files.motivationLetter[0].path;
+    const cvPath = req.files.cv[0].filename;
+    const motivationLetterPath = req.files.motivationLetter[0].filename;
 
     
     const application = new Application({
