@@ -5,11 +5,15 @@ const dbConnect = require("./config/dbConnect");
 const notificationRoutes = require("./routes/notificationRoutes");
 
 
+
+
 // Gemini
 global.fetch = fetch;
 global.Headers = fetch.Headers;
 global.Request = fetch.Request;
 global.Response = fetch.Response;
+
+
 
 // Import des routes
 const authRoutes = require("./routes/authRoutes");
@@ -48,6 +52,7 @@ app.use("/api/notify", notificationRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use("/api/interviews", interviewRoutes);
 app.use('/images', express.static('public/images'));
+
 
 
 

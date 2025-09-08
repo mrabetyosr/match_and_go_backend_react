@@ -162,23 +162,54 @@ const updateApplicationStatus = async (req, res) => {
     const applicationId = req.params.applicationId;
     const { status } = req.body;
 
-    // Find the application and populate the offer to check ownership
+    // Vérifier que le statut est valide
+    if (!['interview_scheduled', 'accepted', 'rejected'].includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+
     const application = await Application.findById(applicationId).populate('offerId');
     
     if (!application) {
       return res.status(404).json({ message: "Application not found" });
     }
 
-    // Check if the company owns the offer
     if (application.offerId.companyId.toString() !== user._id.toString()) {
       return res.status(403).json({ message: "Access denied. You can only update applications for your own offers." });
     }
 
-    // Update the application status
+    // Logique de transition des statuts
+    const currentStatus = application.status;
+    
+    // Depuis "pending" : peut aller vers "interview_scheduled" ou "rejected"
+    if (currentStatus === "pending") {
+      if (!['interview_scheduled', 'rejected'].includes(status)) {
+        return res.status(400).json({ 
+          message: "From pending, you can only schedule interview or reject" 
+        });
+      }
+    }
+    
+    // Depuis "interview_scheduled" : peut aller vers "accepted" ou "rejected"
+    else if (currentStatus === "interview_scheduled") {
+      if (!['accepted', 'rejected'].includes(status)) {
+        return res.status(400).json({ 
+          message: "After interview scheduled, you can only accept or reject" 
+        });
+      }
+    }
+    
+    // Les statuts "accepted" et "rejected" sont finaux
+    else if (['accepted', 'rejected'].includes(currentStatus)) {
+      return res.status(400).json({ 
+        message: `Cannot change status from ${currentStatus}. This is a final decision.` 
+      });
+    }
+
+    // Mettre à jour le statut
     application.status = status;
     await application.save();
 
-    res.status(200).json({ message: "Status updated successfully", application });
+    res.status(200).json({ message: `Status updated to ${status} successfully`, application });
   } catch (err) {
     if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
       return res.status(401).json({ message: "Invalid or expired token" });
