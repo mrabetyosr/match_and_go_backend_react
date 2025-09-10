@@ -216,3 +216,34 @@ exports.publishQuiz = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+/// 🔹 Vérifier la disponibilité des quiz pour une offre
+exports.checkQuizAvailability = async (req, res) => {
+  try {
+    const { offerId } = req.params;
+
+    // Vérifier si l'offre existe
+    const offer = await Offer.findById(offerId);
+    if (!offer) {
+      return res.status(404).json({ message: "Offer not found" });
+    }
+
+    // Compter les quiz publiés pour CETTE offre
+    const quizCount = await Quiz.countDocuments({ 
+      offer: offerId,       // <-- ici on utilise "offer"
+      isPublished: true 
+    });
+
+    return res.status(200).json({
+      hasQuiz: quizCount > 0,
+      count: quizCount,
+      offerId: offerId
+    });
+
+  } catch (error) {
+    console.error("Error checking quiz availability:", error);
+    return res.status(500).json({ 
+      message: "Server error", 
+      error: error.message 
+    });
+  }
+};
