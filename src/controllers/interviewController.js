@@ -1,11 +1,21 @@
 const Interview = require("../models/interviewModel");
 const Application = require("../models/applicationModel");
 const User = require("../models/userModel");
+const Notification = require("../models/notificationModel");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const { v4: uuidv4 } = require("uuid");
 const path = require("path");
+const { sendNotification } = require("../utils/socket");
 
+// Helper function: notify candidate
+const notifyCandidate = async (candidateId, message) => {
+  const notif = await Notification.create({ candidateId, message });
+  sendNotification(candidateId, message);
+  return notif;
+};
+
+// Main function
 const scheduleInterview = async (req, res) => {
   try {
     // ✅ Verify token
@@ -19,13 +29,16 @@ const scheduleInterview = async (req, res) => {
     const { applicationId } = req.params;
     const { date } = req.body;
 
+    // ✅ Fetch application
     const application = await Application.findById(applicationId).populate("offerId");
     if (!application) return res.status(404).json({ message: "Application not found" });
 
+    // ✅ Check company ownership
     if (application.offerId.companyId.toString() !== user._id.toString()) {
       return res.status(403).json({ message: "Only the offer owner can schedule the interview" });
     }
 
+    // ✅ Fetch candidate
     const candidate = await User.findById(application.candidateId);
     if (!candidate) return res.status(404).json({ message: "Candidate not found" });
 
@@ -33,8 +46,7 @@ const scheduleInterview = async (req, res) => {
     const roomName = `matchgo-${uuidv4()}`;
     const meetLink = `https://meet.jit.si/${roomName}`;
 
-    // ✅ Automatically generate message
-    const message = `
+    const messageText = `
 Hello ${candidate.username},
 
 You are invited to an interview for the position of "${application.offerId.jobTitle}".
@@ -42,23 +54,21 @@ You are invited to an interview for the position of "${application.offerId.jobTi
 Date & Time: ${new Date(date).toLocaleString()}
 Meeting Link: ${meetLink}
 
-We look forward to meeting you.
-
 Best regards,
 ${user.username}
 `.trim();
 
-    // ✅ Save interview to database
+    // ✅ Save interview
     const interview = new Interview({
       applicationId,
       scheduledBy: user._id,
       date,
       meetLink,
-      message,
+      message: messageText,
     });
     await interview.save();
 
-    // ✅ Send email to candidate
+    // ✅ Send email
     if (candidate?.email) {
       const transporter = nodemailer.createTransport({
         service: "gmail",
@@ -70,66 +80,13 @@ ${user.username}
       const emailHtml = `
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Interview Scheduled - Match & Go</title>
-</head>
-<body style="margin:0; padding:0; background-color:#f4f6f8; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
-
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f4f6f8; padding:40px 0;">
-    <tr><td align="center">
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="650" style="max-width:650px; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 8px 20px rgba(0,0,0,0.12);">
-        <tr>
-          <td style="background: linear-gradient(135deg,#28a745 0%,#20c997 100%); color:#fff; text-align:center; padding:35px 30px;">
-            <img src="cid:namelogo" alt="Company Logo" style="width:120px; height:auto; margin-bottom:20px; border-radius:10px;">
-            <h1 style="margin:0; font-size:28px; font-weight:700;">🎯 Interview Scheduled</h1>
-            <p style="margin:8px 0 0 0; font-size:16px; opacity:0.95;">Hello ${candidate.username}, your interview is ready!</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:40px 35px; color:#2c3e50; font-size:16px; line-height:1.7;">
-            <p style="margin:0 0 25px 0;">Your application for <strong>${application.offerId.jobTitle}</strong> has been selected for an interview.</p>
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-              <tr><td align="center" style="padding:25px 0;">
-                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                  <tr>
-                    <td style="border-radius:10px; background: linear-gradient(135deg,#28a745 0%,#20c997 100%); box-shadow:0 4px 15px rgba(40,167,69,0.4);">
-                      <a href="${meetLink}" style="display:inline-block; color:#fff; text-decoration:none; padding:16px 32px; font-size:16px; font-weight:600; border-radius:10px; transition:all 0.3s ease;">
-                        🚀 Join the Interview
-                      </a>
-                    </td>
-                  </tr>
-                </table>
-              </td></tr>
-            </table>
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f8f9fa; border-radius:10px; border-left:4px solid #28a745; margin:25px 0;">
-              <tr><td style="padding:25px;">
-                <h3 style="margin:0 0 15px 0; color:#28a745; font-size:18px; font-weight:600;">📋 Interview Details</h3>
-                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                  <tr><td style="padding:8px 0; font-weight:600; color:#495057; width:120px; vertical-align:top;">🔗 Link:</td>
-                      <td style="padding:8px 0; word-break:break-all;"><a href="${meetLink}" style="color:#28a745; text-decoration:none; font-weight:500;">${meetLink}</a></td></tr>
-                  <tr><td style="padding:8px 0; font-weight:600; color:#495057;">📅 Date:</td><td style="padding:8px 0; font-weight:500;">${new Date(date).toLocaleString()}</td></tr>
-                  <tr><td style="padding:8px 0; font-weight:600; color:#495057;">💼 Position:</td><td style="padding:8px 0; font-weight:500;">${application.offerId.jobTitle}</td></tr>
-                  <tr><td style="padding:8px 0; font-weight:600; color:#495057;">🏢 Company:</td><td style="padding:8px 0; font-weight:500;">${user.username}</td></tr>
-                </table>
-              </td></tr>
-            </table>
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#e8f5e8; border-radius:8px; margin:25px 0;">
-              <tr><td style="padding:20px;">
-                <h4 style="margin:0 0 10px 0; color:#28a745; font-size:16px; font-weight:600;">💬 Message from the Team</h4>
-                <p style="margin:0; color:#495057;">${message}</p>
-              </td></tr>
-            </table>
-          </td></tr>
-        <tr><td style="background-color:#f8f9fa; text-align:center; padding:25px 30px; border-top:1px solid #e9ecef;">
-          <p style="margin:0 0 8px 0; font-size:14px; color:#6c757d;">© ${new Date().getFullYear()} Match & Go. All rights reserved.</p>
-          <p style="margin:0; font-size:13px; color:#868e96;">Questions? Contact us: <a href="mailto:support@matchandgo.com" style="color:#28a745; text-decoration:none; font-weight:500;">support@matchandgo.com</a></p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-
+<head><meta charset="UTF-8"><title>Interview Scheduled</title></head>
+<body>
+  <h2>Hello ${candidate.username},</h2>
+  <p>You have an interview for <strong>${application.offerId.jobTitle}</strong>.</p>
+  <p>Date & Time: ${new Date(date).toLocaleString()}</p>
+  <p>Meeting Link: <a href="${meetLink}">${meetLink}</a></p>
+  <p>Best regards,<br>${user.username}</p>
 </body>
 </html>
 `;
@@ -137,11 +94,17 @@ ${user.username}
       await transporter.sendMail({
         from: `"${user.username}" <${process.env.EMAIL_USER}>`,
         to: candidate.email,
-        subject: `Interview Scheduled for "${application.offerId.jobTitle}"`,
+        subject: `Interview Scheduled: ${application.offerId.jobTitle}`,
         html: emailHtml,
         attachments: [{ filename: "namelogo.png", path: logoPath, cid: "namelogo" }],
       });
     }
+
+    // ✅ Send notification
+    await notifyCandidate(
+      candidate._id,
+      `You have a new interview for "${application.offerId.jobTitle}" on ${new Date(date).toLocaleString()}. Join here: ${meetLink}`
+    );
 
     res.status(201).json({ message: "Interview scheduled successfully", interview });
   } catch (err) {
@@ -150,6 +113,8 @@ ${user.username}
     res.status(500).json({ message: err.message });
   }
 };
+
+
 
 
 ////////////////// Récupérer tous les entretiens pour une offre (owner seulement)
