@@ -3,7 +3,8 @@ const dotenv = require("dotenv").config();
 const fetch = require("node-fetch");
 const dbConnect = require("./config/dbConnect"); 
 const notificationRoutes = require("./routes/notificationRoutes");
-
+const bodyParser = require("body-parser");
+const meetRoutes = require("./routes/meetRoutes");
 
 
 
@@ -40,6 +41,7 @@ const server = require("http").createServer(app);
 // Middleware
 app.use(cors({ origin: "http://localhost:3000" }));
 app.use(express.json());
+app.use(bodyParser.json());
 
 // Routes
 app.use("/api/auth", authRoutes);
@@ -52,6 +54,7 @@ app.use("/api/notify", notificationRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use("/api/interviews", interviewRoutes);
 app.use('/images', express.static('public/images'));
+app.use("/api", meetRoutes);
 
 
 
