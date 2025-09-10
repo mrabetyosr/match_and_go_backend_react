@@ -3,6 +3,7 @@ const router = express.Router();
 const { applyToOffer, getMyApplications, getOfferSubmissions,updateApplicationStatus } = require("../controllers/applicationController");
 const upload = require("../middleware/uploadFile");
 const verifyToken = require("../middleware/authMiddleware");
+const { deleteApplicationsForOffer } = require("../controllers/applicationController");
 
 
 router.post(
@@ -25,5 +26,8 @@ router.get("/:offerId/submissions", verifyToken, getOfferSubmissions);
 
 // UPDATE application status (only company owner of the offer)
 router.put("/:applicationId/status", verifyToken, updateApplicationStatus);
+
+
+router.delete("/offer/:offerId", deleteApplicationsForOffer);
 
 module.exports = router;
