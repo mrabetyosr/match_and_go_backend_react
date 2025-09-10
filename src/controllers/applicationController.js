@@ -218,4 +218,40 @@ const updateApplicationStatus = async (req, res) => {
   }
 };
 
-module.exports = { applyToOffer, getMyApplications, getOfferSubmissions, updateApplicationStatus };
+
+
+const deleteApplicationsForOffer = async (req, res) => {
+  try {
+    // 1️⃣ Verify token
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+
+    if (!user || user.role !== "company") {
+      return res.status(403).json({ message: "Only companies can delete applications." });
+    }
+
+    const { offerId } = req.params;
+    const offer = await Offer.findById(offerId);
+    if (!offer) return res.status(404).json({ message: "Offer not found" });
+
+    // 2️⃣ Check ownership
+    if (offer.companyId.toString() !== user._id.toString()) {
+      return res.status(403).json({ message: "You are not allowed to delete applications for this offer." });
+    }
+
+    // 3️⃣ Delete all applications for this offer
+    const deleted = await Application.deleteMany({ offerId: offer._id });
+
+    res.status(200).json({ message: `${deleted.deletedCount} applications deleted successfully` });
+  } catch (err) {
+    if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { applyToOffer, getMyApplications, getOfferSubmissions, updateApplicationStatus,deleteApplicationsForOffer  };

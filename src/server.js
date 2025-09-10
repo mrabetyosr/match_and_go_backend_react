@@ -54,7 +54,7 @@ app.use("/api/notify", notificationRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use("/api/interviews", interviewRoutes);
 app.use('/images', express.static('public/images'));
-app.use("/api", meetRoutes);
+app.use("/api/meet", meetRoutes);
 
 
 
