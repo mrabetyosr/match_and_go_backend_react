@@ -8,22 +8,24 @@ const { v4: uuidv4 } = require("uuid");
 const path = require("path");
 const { sendNotification } = require("../utils/socket");
 
-// Helper function: notify candidate
+// Helper function to notify candidate
 const notifyCandidate = async (candidateId, message) => {
   const notif = await Notification.create({ candidateId, message });
   sendNotification(candidateId, message);
   return notif;
 };
 
+// POST /api/interviews/schedule/:applicationId
 const scheduleInterview = async (req, res) => {
   try {
-    // Verify token
+    // 1️⃣ Verify token
     const token = req.headers.authorization?.split(" ")[1];
     if (!token) return res.status(401).json({ message: "No token provided" });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
-    if (!user) return res.status(403).json({ message: "User not found" });
+    if (!user || user.role !== "company")
+      return res.status(403).json({ message: "Only companies can schedule interviews" });
 
     const { applicationId } = req.params;
     const { date } = req.body;
@@ -37,38 +39,39 @@ const scheduleInterview = async (req, res) => {
     const candidate = await User.findById(application.candidateId);
     if (!candidate) return res.status(404).json({ message: "Candidate not found" });
 
-    // Generate Jitsi Meet link
+    // 2️⃣ Generate Jitsi Meet link
     const roomName = `matchgo-${uuidv4()}`;
     const meetLink = `https://meet.jit.si/${roomName}`;
 
-    // Automatically generate message
-    const message = `
-Hello ${candidate.username},
-
-You are invited to an interview for the position of "${application.offerId.jobTitle}".
-Date & Time: ${new Date(date).toLocaleString()}
-Meeting Link: ${meetLink}
-
-We look forward to meeting you.
-Best regards,
-${user.username}
-`.trim();
-
-    // Save interview to database
+    // 3️⃣ Save interview
     const interview = new Interview({
-      applicationId,
+      applicationId: application._id,
+      candidateId: candidate._id,
       scheduledBy: user._id,
-      date,
+      date: new Date(date),
       meetLink,
-      message,
+      message: `Your interview for "${application.offerId.jobTitle}" is scheduled at ${new Date(date).toLocaleString()}.\nMeeting Link: ${meetLink}`,
     });
     await interview.save();
 
-    // Send email to candidate
-    if (candidate?.email) {
+    // 4️⃣ Update application status to "interview_scheduled"
+    application.status = "interview_scheduled";
+    await application.save();
+
+    // 5️⃣ Populate application for response
+    await application.populate({
+      path: "offerId",
+      populate: { path: "companyId", select: "username image_User companyInfo" },
+    });
+
+    // 6️⃣ Send email with full HTML
+    if (candidate.email) {
       const transporter = nodemailer.createTransport({
         service: "gmail",
-        auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
       });
 
       const logoPath = path.join(__dirname, "../assets/namelogo.png");
@@ -120,7 +123,7 @@ ${user.username}
                 <tr>
                   <td>
                     <h4 style="margin:0 0 10px 0; color:#28a745; font-size:16px; font-weight:600;">💬 Message from the Team</h4>
-                    <p style="margin:0; color:#495057;">${message}</p>
+                    <p style="margin:0; color:#495057;">${interview.message}</p>
                   </td>
                 </tr>
               </table>
@@ -149,19 +152,20 @@ ${user.username}
       });
     }
 
-    // Send notification
-    await notifyCandidate(
-      candidate._id,
-      `You have a new interview for "${application.offerId.jobTitle}" on ${new Date(date).toLocaleString()}. Join here: ${meetLink}`
-    );
+    // 7️⃣ Notify candidate via socket & DB
+    await notifyCandidate(candidate._id, `You have a new interview for "${application.offerId.jobTitle}". Check your email for details.`);
 
-    res.status(201).json({ message: "Interview scheduled successfully", interview });
+    // 8️⃣ Return interview + updated application
+    res.status(201).json({ message: "Interview scheduled successfully", interview, application });
+
   } catch (err) {
     if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError")
       return res.status(401).json({ message: "Invalid or expired token" });
     res.status(500).json({ message: err.message });
   }
 };
+
+
 
 
 
@@ -254,6 +258,53 @@ const getInterviewsByDate = async (req, res) => {
   }
 };
 
+const getUpcomingInterviews = async (req, res) => {
+  try {
+    // ✅ Verify token
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(403).json({ message: "User not found" });
+
+    // ✅ Current date
+    const now = new Date();
+
+    // ✅ Fetch all future interviews
+    const interviews = await Interview.find({ date: { $gte: now } })
+      .sort({ date: 1 })
+      .populate({
+        path: "applicationId",
+        populate: { path: "offerId", select: "jobTitle companyId" },
+      })
+      .populate("scheduledBy", "username");
+
+    // ✅ Filter only for this candidate AND status interview_scheduled
+    const upcoming = interviews.filter(
+      (i) =>
+        i.applicationId?.candidateId?.toString() === user._id.toString() &&
+        i.applicationId?.status === "interview_scheduled"
+    );
+
+    // ✅ Format response
+    const response = upcoming.map((i) => ({
+      _id: i._id,
+      date: i.date,
+      jobTitle: i.applicationId.offerId.jobTitle,
+      companyName:
+        i.applicationId.offerId.companyId?.username || i.scheduledBy.username,
+      meetLink: i.meetLink,
+      status: i.applicationId.status, // include status in response
+    }));
+
+    res.status(200).json({ success: true, interviews: response });
+  } catch (err) {
+    if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError")
+      return res.status(401).json({ message: "Invalid or expired token" });
+    res.status(500).json({ message: err.message });
+  }
+};
 
 
-module.exports = { scheduleInterview,getInterviewsByOffer,getMyInterviews,getInterviewsByDate}
+module.exports = { getUpcomingInterviews,scheduleInterview,getInterviewsByOffer,getMyInterviews,getInterviewsByDate}

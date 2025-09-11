@@ -74,33 +74,28 @@ const applyToOffer = async (req, res) => {
 // GET all my applications candidate 
 const getMyApplications = async (req, res) => {
   try {
-    // 1️⃣ Vérifier le token
     const token = req.headers.authorization?.split(" ")[1];
     if (!token) return res.status(401).json({ message: "No token provided" });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
 
-    // 2️⃣ Vérifier que l'utilisateur est un candidat
     if (!user || user.role !== "candidate") {
       return res.status(403).json({ message: "Only candidates can view their applications." });
     }
 
-    // 3️⃣ Récupérer toutes les applications du candidat
     const applications = await Application.find({ candidateId: user._id })
       .populate({
         path: "offerId",
         select: "jobTitle description applicationDeadline companyId",
         populate: {
           path: "companyId",
-          select: "username image_User companyInfo.location companyInfo.description" // infos complètes de l'entreprise
-        }
+          select: "username image_User companyInfo.location companyInfo.description",
+        },
       })
-      .sort({ createdAt: -1 }); // tri du plus récent au plus ancien
+      .sort({ createdAt: -1 });
 
-    // 4️⃣ Retourner la réponse
     res.status(200).json({ applications });
-
   } catch (err) {
     if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
       return res.status(401).json({ message: "Invalid or expired token" });
@@ -108,7 +103,6 @@ const getMyApplications = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
 
 // GET all submissions for an offer (only owner of the offer)
 const getOfferSubmissions = async (req, res) => {
@@ -162,52 +156,41 @@ const updateApplicationStatus = async (req, res) => {
     const applicationId = req.params.applicationId;
     const { status } = req.body;
 
-    // Vérifier que le statut est valide
-    if (!['interview_scheduled', 'accepted', 'rejected'].includes(status)) {
+    // Validate status
+    if (!["interview_scheduled", "accepted", "rejected"].includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
 
-    const application = await Application.findById(applicationId).populate('offerId');
-    
-    if (!application) {
-      return res.status(404).json({ message: "Application not found" });
-    }
+    const application = await Application.findById(applicationId).populate("offerId");
+    if (!application) return res.status(404).json({ message: "Application not found" });
 
     if (application.offerId.companyId.toString() !== user._id.toString()) {
       return res.status(403).json({ message: "Access denied. You can only update applications for your own offers." });
     }
 
-    // Logique de transition des statuts
+    // Status transition logic
     const currentStatus = application.status;
-    
-    // Depuis "pending" : peut aller vers "interview_scheduled" ou "rejected"
+
     if (currentStatus === "pending") {
-      if (!['interview_scheduled', 'rejected'].includes(status)) {
-        return res.status(400).json({ 
-          message: "From pending, you can only schedule interview or reject" 
-        });
+      if (!["interview_scheduled", "rejected"].includes(status)) {
+        return res.status(400).json({ message: "From pending, you can only schedule interview or reject." });
       }
-    }
-    
-    // Depuis "interview_scheduled" : peut aller vers "accepted" ou "rejected"
-    else if (currentStatus === "interview_scheduled") {
-      if (!['accepted', 'rejected'].includes(status)) {
-        return res.status(400).json({ 
-          message: "After interview scheduled, you can only accept or reject" 
-        });
+    } else if (currentStatus === "interview_scheduled") {
+      if (!["accepted", "rejected"].includes(status)) {
+        return res.status(400).json({ message: "After interview scheduled, you can only accept or reject." });
       }
-    }
-    
-    // Les statuts "accepted" et "rejected" sont finaux
-    else if (['accepted', 'rejected'].includes(currentStatus)) {
-      return res.status(400).json({ 
-        message: `Cannot change status from ${currentStatus}. This is a final decision.` 
-      });
+    } else if (["accepted", "rejected"].includes(currentStatus)) {
+      return res.status(400).json({ message: `Cannot change status from ${currentStatus}. This is a final decision.` });
     }
 
-    // Mettre à jour le statut
     application.status = status;
     await application.save();
+
+    // Return populated application so candidate sees changes
+    await application.populate({
+      path: "offerId",
+      populate: { path: "companyId", select: "username image_User companyInfo" },
+    });
 
     res.status(200).json({ message: `Status updated to ${status} successfully`, application });
   } catch (err) {
@@ -217,7 +200,6 @@ const updateApplicationStatus = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
 
 
 const deleteApplicationsForOffer = async (req, res) => {
@@ -253,5 +235,4 @@ const deleteApplicationsForOffer = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
-module.exports = { applyToOffer, getMyApplications, getOfferSubmissions, updateApplicationStatus,deleteApplicationsForOffer  };
+module.exports = { deleteApplicationsForOffer,applyToOffer, getMyApplications, getOfferSubmissions, updateApplicationStatus };

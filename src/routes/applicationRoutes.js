@@ -26,8 +26,6 @@ router.get("/:offerId/submissions", verifyToken, getOfferSubmissions);
 
 // UPDATE application status (only company owner of the offer)
 router.put("/:applicationId/status", verifyToken, updateApplicationStatus);
-
-
 router.delete("/offer/:offerId", deleteApplicationsForOffer);
 
 module.exports = router;

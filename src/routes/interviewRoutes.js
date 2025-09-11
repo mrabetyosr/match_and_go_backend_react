@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const { scheduleInterview, getInterviewsByOffer,getMyInterviews,getInterviewsByDate} = require("../controllers/interviewController");
+const { getUpcomingInterviews,scheduleInterview, getInterviewsByOffer,getMyInterviews,getInterviewsByDate} = require("../controllers/interviewController");
 
 // Planifier un entretien pour une candidature
-router.post("/:applicationId", scheduleInterview);
+router.post("/schedule/:applicationId", scheduleInterview);
 
 
 // Récupérer toutes les interviews pour une offre (Company)
@@ -15,5 +15,7 @@ router.get("/my", getMyInterviews);
 
 // Filtrer par date
 router.get("/filter", getInterviewsByDate);
+
+router.get("/my-upcoming", getUpcomingInterviews);
 
 module.exports = router;
