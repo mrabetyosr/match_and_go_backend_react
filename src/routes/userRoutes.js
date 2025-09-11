@@ -9,6 +9,7 @@ const replyController = require("../controllers/replyController");
 const reactionController = require("../controllers/reactionController");
 const shareController = require("../controllers/shareController");
 const userController = require("../controllers/userController");
+const { toggleSaveJob,getSavedJobs  } = require("../controllers/userController");
 
 
 const router = express.Router();
@@ -209,4 +210,11 @@ router.delete(
   authorizeRoles("candidate", "company"),
   reactionController.removeReaction
 );
+
+
+router.get("/saved-jobs", getSavedJobs);
+
+
+router.post("/save-job/:offerId", toggleSaveJob);
+
 module.exports = router;
