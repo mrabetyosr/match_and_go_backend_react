@@ -35,7 +35,8 @@ const userSchema = new mongoose.Schema(
       phoneNumber: { type: String },
       location: { type: String },
       dateOfBirth: { type: Date },
-      
+      savedJobs: [{ type: mongoose.Schema.Types.ObjectId, ref: "Offer" }] // <-- Add this
+
    
 
     },
