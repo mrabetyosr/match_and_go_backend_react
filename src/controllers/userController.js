@@ -426,67 +426,57 @@ module.exports.getCurrentUser = async (req, res) => {
 
 module.exports.toggleSaveJob = async (req, res) => {
   try {
-    // 1️⃣ Get token from headers
     const token = req.headers.authorization?.split(" ")[1];
     if (!token) 
       return res.status(401).json({ message: "Access denied. No token provided." });
 
-    // 2️⃣ Decode token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const connectedUser = await User.findById(decoded.id);
 
-    if (!connectedUser || connectedUser.role !== "candidate") {
-      return res.status(403).json({ message: "Only candidates can save job offers." });
+    if (!connectedUser) {
+      return res.status(403).json({ message: "User not found." });
     }
 
-    // 3️⃣ Get offerId from params
     const { offerId } = req.params;
+    
+    // Assurez-vous que savedJobs existe
+    if (!connectedUser.candidateInfo) connectedUser.candidateInfo = {};
     if (!connectedUser.candidateInfo.savedJobs) connectedUser.candidateInfo.savedJobs = [];
 
-    // 4️⃣ Toggle save/unsave
     const index = connectedUser.candidateInfo.savedJobs.indexOf(offerId);
     if (index > -1) {
-      // unsave
-      connectedUser.candidateInfo.savedJobs.splice(index, 1);
+      connectedUser.candidateInfo.savedJobs.splice(index, 1); // unsave
     } else {
-      // save
-      connectedUser.candidateInfo.savedJobs.push(offerId);
+      connectedUser.candidateInfo.savedJobs.push(offerId);    // save
     }
 
     await connectedUser.save();
     res.json({ savedJobs: connectedUser.candidateInfo.savedJobs });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-
-
-
 module.exports.getSavedJobs = async (req, res) => {
   try {
-    // 1️⃣ Get token from headers
     const token = req.headers.authorization?.split(" ")[1];
     if (!token)
       return res.status(401).json({ message: "Access denied. No token provided." });
 
-    // 2️⃣ Decode token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const connectedUser = await User.findById(decoded.id);
 
-    // 3️⃣ Check if user exists and is a candidate
-    if (!connectedUser || connectedUser.role !== "candidate") {
-      return res.status(403).json({ message: "Only candidates can view saved jobs." });
+    if (!connectedUser) {
+      return res.status(403).json({ message: "User not found." });
     }
 
-    // 4️⃣ Ensure savedJobs array exists
-    if (!connectedUser.candidateInfo.savedJobs) {
-      connectedUser.candidateInfo.savedJobs = [];
-    }
+    if (!connectedUser.candidateInfo) connectedUser.candidateInfo = {};
+    if (!connectedUser.candidateInfo.savedJobs) connectedUser.candidateInfo.savedJobs = [];
 
-    // 5️⃣ Return saved jobs
     res.json({ savedJobs: connectedUser.candidateInfo.savedJobs });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
