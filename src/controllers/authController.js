@@ -4,10 +4,45 @@ const User = require("../models/userModel");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const path = require("path");
+const fetch = require("node-fetch");
+
+
+const verifyCaptchaToken = async (captchaToken) => {
+  if (!captchaToken) throw new Error("Captcha token missing");
+
+  const response = await fetch("https://www.google.com/recaptcha/api/siteverify", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${captchaToken}`,
+  });
+
+  const data = await response.json();
+  if (!data.success) throw new Error("Captcha verification failed");
+
+  return data;
+};
+
+
 
 const register = async (req, res) => {
   try {
-    const { username, email, password, role, location, category, founded, size, website, linkedin } = req.body;
+    const {
+      username,
+      email,
+      password,
+      role,
+      location,
+      category,
+      founded,
+      size,
+      website,
+      linkedin,
+      captchaToken
+    } = req.body;
+
+    // ✅ Vérification reCAPTCHA
+    await verifyCaptchaToken(captchaToken);
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = new User({
@@ -35,9 +70,10 @@ const register = async (req, res) => {
       message: `User registered with username ${username}`, 
       role: newUser.role 
     });
+
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "something went wrong" });
+    res.status(500).json({ message: err.message || "Something went wrong" });
   }
 };
 
@@ -46,27 +82,36 @@ const register = async (req, res) => {
 
 
 
-const login = async (req, res) => {
-   try { 
-    const { email, password } = req.body;
+ const login = async (req, res) => {
+  try {
+    const { email, password, captchaToken } = req.body;
+
+    // ✅ Vérification reCAPTCHA
+    await verifyCaptchaToken(captchaToken);
+
     const user = await User.findOne({ email });
 
     if (!user) {
-        return res.status(404).json({message: `User with username ${email} not found`})
-    } 
-
-    const isMatch = await bcrypt.compare(password, user.password)
-    if(!isMatch){
-        return res.status(400).json({message : `Invalid credentails`})
+      return res.status(404).json({ message: `User with email ${email} not found` });
     }
 
-    const token = jwt.sign({id: user._id, role: user.role},process.env.JWT_SECRET,{ expiresIn: "1h" });
-    
-    res.status(200).json({ token })
-}
-    catch (err) {
-        res.status(500).json({message:`Something went wrong`})
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: `Invalid credentials` });
     }
+
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    res.status(200).json({ token });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message || "Something went wrong" });
+  }
 };
 
 // current user
@@ -86,7 +131,10 @@ const getCurrentUser = async (req, res) => {
 
 const forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email , captchaToken } = req.body;
+
+   // ✅ Vérification reCAPTCHA
+    await verifyCaptchaToken(captchaToken);
 
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: "User not found with this email" });
@@ -170,8 +218,11 @@ const forgotPassword = async (req, res) => {
 // 📌 Verify Reset Code
 const verifyCode = async (req, res) => {
   try {
-    const { email, code } = req.body;
-
+    const { email, code , captchaToken  } = req.body;
+    
+    // ✅ Verify reCAPTCHA first
+    await verifyCaptchaToken(captchaToken);
+    
     const resetCodeHash = crypto.createHash("sha256").update(code).digest("hex");
 
     const user = await User.findOne({
@@ -192,8 +243,11 @@ const verifyCode = async (req, res) => {
 // 📌 Reset Password (After Code Verification)
 const resetPassword = async (req, res) => {
   try {
-    const { email, code, newPassword } = req.body;
-
+    const { email, code, newPassword, captchaToken } = req.body;
+ 
+    // ✅ Verify reCAPTCHA first
+    await verifyCaptchaToken(captchaToken);
+    
     // Hash the code
     const resetCodeHash = crypto.createHash("sha256").update(code).digest("hex");
 
