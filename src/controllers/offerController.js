@@ -157,4 +157,32 @@ const updateOfferByOwner = async (req, res) => {
   }
 };
 
-module.exports = { addOfferCompany,getAllOffers,deleteOfferCompany,getOfferById,getMyOffers,updateOfferByOwner };
+
+const searchOffers = async (req, res) => {
+  try {
+    const query = req.query.q;
+
+    if (!query || query.trim() === "") {
+      return res.status(400).json({ message: "Search query is required" });
+    }
+
+    const offers = await Offer.find({
+      $or: [
+        { jobTitle: { $regex: query, $options: "i" } },
+        { skills: { $regex: query, $options: "i" } },
+        { tags: { $regex: query, $options: "i" } },
+        { description: { $regex: query, $options: "i" } }
+      ]
+    })
+    .populate("companyId") // récupère toutes les infos de l'utilisateur/entreprise
+    .limit(10);
+
+    res.json(offers);
+  } catch (error) {
+    console.error("Error searching offers:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+module.exports = { searchOffers,addOfferCompany,getAllOffers,deleteOfferCompany,getOfferById,getMyOffers,updateOfferByOwner };

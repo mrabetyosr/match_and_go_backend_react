@@ -4,6 +4,7 @@ const { addOfferCompany,getAllOffers,deleteOfferCompany,getOfferById,getMyOffers
 const verifyToken = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
 const { createQuizForOffer,getAllQuizByOffer,updateQuiz,deleteQuizByOwner,getRandomQuizByOffer,getQuizCountByOffer,publishQuiz,checkQuizAvailability} = require("../controllers/quizController");
+const { searchOffers } = require("../controllers/offerController"); // ✅ importer comme objet
 
 // Ajouter une offre (seulement company)
 router.post("/add", addOfferCompany);
@@ -43,6 +44,8 @@ router.put("/:quizId/publish", verifyToken, publishQuiz);
 
 router.get("/myOffers", verifyToken, authorizeRoles("company"), getMyOffers);
 
+router.get("/search", searchOffers); // ✅ searchOffers est une fonction
+
 // Récupérer une offre par son ID
 router.get("/:id", getOfferById);
 
@@ -51,4 +54,6 @@ router.get("/:id", getOfferById);
 router.put("/update/:id", verifyToken, authorizeRoles("company"), updateOfferByOwner);
 // Check quiz availability for an offer
 router.get("/:offerId/quiz-availability", verifyToken, checkQuizAvailability);
+
+
 module.exports = router;
