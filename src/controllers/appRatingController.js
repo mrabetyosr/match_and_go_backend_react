@@ -1,4 +1,3 @@
-// controllers/appRatingController.js
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
 const AppRating = require("../models/appRatingModel");
@@ -11,6 +10,11 @@ module.exports.addAppRating = async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
     if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Only allow rating after 5 logins
+    if (user.loginCount < 5) {
+      return res.status(400).json({ message: "You can rate the app after your 5th login" });
+    }
 
     if (user.hasRatedApp) {
       return res.status(400).json({ message: "You already rated this app" });
