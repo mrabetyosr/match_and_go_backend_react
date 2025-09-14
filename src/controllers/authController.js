@@ -114,6 +114,7 @@ const register = async (req, res) => {
   }
 };
 
+
 // current user
 const getCurrentUser = async (req, res) => {
     try {

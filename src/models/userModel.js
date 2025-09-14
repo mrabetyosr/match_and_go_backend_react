@@ -59,6 +59,10 @@ const userSchema = new mongoose.Schema(
       },
     },
 
+  hasRatedApp: { type: Boolean, default: false }, // ✅ ajout
+
+
+
     // 🔹 Add for password reset
     resetPasswordToken: { type: String },
     resetPasswordExpire: { type: Date },

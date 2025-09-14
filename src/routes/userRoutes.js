@@ -1,7 +1,7 @@
 const express = require("express");
 const verifyToken = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
-const { updatePhoto,DeleteUserById,getAllCandidates, updateUserInfo, getAllCompany, updateCover,getCompaniesByCategory,getCurrentUser} = require("../controllers/userController");
+const { updatePhoto,DeleteUserById,getAllCandidates, updateUserInfo, getAllCompany, updateCover,getCompaniesByCategory,getCurrentUser,getuserforrating} = require("../controllers/userController");
 const uploadfile = require("../middleware/uploadFile");
 const postController = require("../controllers/postController");
 const commentController = require("../controllers/commentController");
@@ -185,6 +185,7 @@ router.get("/replies/:replyId/reactions",verifyToken,authorizeRoles("candidate",
 router.get("/me", verifyToken, getCurrentUser);
 
 
+router.get("/getuserrate", verifyToken, getuserforrating);
 
 
 
