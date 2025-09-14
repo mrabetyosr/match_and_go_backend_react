@@ -4,7 +4,6 @@ const fetch = require("node-fetch");
 const dbConnect = require("./config/dbConnect"); 
 const notificationRoutes = require("./routes/notificationRoutes");
 const bodyParser = require("body-parser");
-const meetRoutes = require("./routes/meetRoutes");
 
 
 
@@ -25,6 +24,8 @@ const questionRoutes = require("./routes/questionRoutes");
 const quizRoutes = require("./routes/quizRoutes");
 const applicationRoutes = require("./routes/applicationRoutes");
 const interviewRoutes = require("./routes/interviewRoutes");
+const appRatingRoutes = require("./routes/appRatingRoutes");
+const meetRoutes = require("./routes/meetRoutes");
 
 const cors = require("cors");
 
@@ -55,6 +56,7 @@ app.use("/api/applications", applicationRoutes);
 app.use("/api/interviews", interviewRoutes);
 app.use('/images', express.static('public/images'));
 app.use("/api/meet", meetRoutes);
+app.use("/api/rating", appRatingRoutes);
 
 
 

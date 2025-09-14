@@ -482,3 +482,26 @@ module.exports.getSavedJobs = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
+
+module.exports.getuserforrating = async (req, res) => {
+  try {
+    const userId = req.user?.id; // middleware JWT doit définir req.user
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const user = await User.findById(userId).select("username email loginCount hasRatedApp");
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.status(200).json({
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      loginCount: user.loginCount || 0,
+      hasRatedApp: user.hasRatedApp || false,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
