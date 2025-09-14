@@ -60,6 +60,7 @@ const userSchema = new mongoose.Schema(
     },
 
   hasRatedApp: { type: Boolean, default: false }, // ✅ ajout
+  loginCount: { type: Number, default: 0 }, // Track logins
 
 
 
