@@ -40,6 +40,10 @@ const userSchema = new mongoose.Schema(
     companyInfo: {
       description: { type: String },
       location: { type: String },
+      coordinates: {               // 🔹 ajout
+        lat: { type: Number },
+        lng: { type: Number }
+      },
       category: {
         type: String,
         enum: [
@@ -59,8 +63,8 @@ const userSchema = new mongoose.Schema(
       },
     },
 
-  hasRatedApp: { type: Boolean, default: false }, // ✅ ajout
-  loginCount: { type: Number, default: 0 }, // Track logins
+    hasRatedApp: { type: Boolean, default: false }, // ✅ ajout
+    loginCount: { type: Number, default: 0 }, // Track logins
 
 
 

@@ -123,7 +123,9 @@ module.exports.updateUserInfo = async (req, res) => {
 
     const updateData = {};
 
+    // -----------------------------
     // Update username
+    // -----------------------------
     if (username) {
       const existingUser = await User.findOne({ username, _id: { $ne: userId } });
       if (existingUser) {
@@ -132,7 +134,9 @@ module.exports.updateUserInfo = async (req, res) => {
       updateData.username = username;
     }
 
+    // -----------------------------
     // Update email
+    // -----------------------------
     if (email) {
       const existingEmail = await User.findOne({ email, _id: { $ne: userId } });
       if (existingEmail) {
@@ -141,12 +145,16 @@ module.exports.updateUserInfo = async (req, res) => {
       updateData.email = email;
     }
 
+    // -----------------------------
     // Update profile image
+    // -----------------------------
     if (image_User) {
       updateData.image_User = image_User;
     }
 
+    // -----------------------------
     // Update candidate info
+    // -----------------------------
     if (candidateInfo) {
       const candidate = typeof candidateInfo === "string" ? JSON.parse(candidateInfo) : candidateInfo;
       updateData.candidateInfo = {};
@@ -158,16 +166,24 @@ module.exports.updateUserInfo = async (req, res) => {
       });
     }
 
+    // -----------------------------
     // Update company info
+    // -----------------------------
     if (companyInfo) {
       const company = typeof companyInfo === "string" ? JSON.parse(companyInfo) : companyInfo;
       updateData.companyInfo = {};
-      const allowedFields = ["description", "location", "category", "founded", "size", "website", "socialLinks"];
+      const allowedFields = ["description", "location", "category", "founded", "size", "website", "socialLinks", "coordinates"];
+
       allowedFields.forEach(field => {
         if (company[field] !== undefined) {
-          // Ensure socialLinks is an object
           if (field === "socialLinks" && typeof company[field] === "string") {
             updateData.companyInfo[field] = JSON.parse(company[field]);
+          } else if (field === "coordinates" && typeof company[field] === "object") {
+            // Assure-toi que coordinates contient lat et lng
+            updateData.companyInfo.coordinates = {
+              lat: company[field].lat,
+              lng: company[field].lng
+            };
           } else {
             updateData.companyInfo[field] = company[field];
           }
@@ -175,7 +191,9 @@ module.exports.updateUserInfo = async (req, res) => {
       });
     }
 
+    // -----------------------------
     // Update the user
+    // -----------------------------
     const updatedUser = await User.findByIdAndUpdate(userId, updateData, { new: true });
 
     if (!updatedUser) {
@@ -189,6 +207,8 @@ module.exports.updateUserInfo = async (req, res) => {
     res.status(500).json({ message: "Erreur serveur: " + err.message });
   }
 };
+
+
 
 // Get all candidates
 module.exports.getAllCandidates = async (req, res) => {
