@@ -37,6 +37,7 @@ const register = async (req, res) => {
       size,
       website,
       linkedin,
+      coordinates,   // ✅ uniquement pour company
       captchaToken
     } = req.body;
 
@@ -60,8 +61,16 @@ const register = async (req, res) => {
         founded,
         size,
         website,
-        linkedin
+        linkedin,
       };
+
+      // ✅ Ajout des coordonnées uniquement pour les entreprises
+      if (coordinates && typeof coordinates === "object") {
+        newUser.companyInfo.coordinates = {
+          lat: coordinates.lat,
+          lng: coordinates.lng
+        };
+      }
     }
 
     await newUser.save();
@@ -76,6 +85,7 @@ const register = async (req, res) => {
     res.status(500).json({ message: err.message || "Something went wrong" });
   }
 };
+
 
 
 
