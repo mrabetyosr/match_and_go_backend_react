@@ -247,3 +247,100 @@ exports.checkQuizAvailability = async (req, res) => {
     });
   }
 };
+
+/// 🔹 Récupérer un quiz aléatoire avec ses questions pour un candidat
+exports.getRandomQuizWithQuestions = async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    const candidateId = req.user.id;
+
+    // Vérifier que l'utilisateur est un candidat
+    if (req.user.role !== "candidate") {
+      return res.status(403).json({ message: "Only candidates can access quizzes" });
+    }
+
+    // Vérifier si l'offre existe
+    const offer = await Offer.findById(offerId);
+    if (!offer) {
+      return res.status(404).json({ message: "Offer not found" });
+    }
+
+    // Vérifier si le candidat a déjà soumis un quiz pour cette offre dans les 48 dernières heures
+    const recentSubmission = await Quiz.aggregate([
+      { $match: { offer: offer._id, isPublished: true } },
+      {
+        $lookup: {
+          from: "quizanswers",
+          let: { quizId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$quiz", "$$quizId"] },
+                    { $eq: ["$candidate", candidateId] }
+                  ]
+                }
+              }
+            },
+            { $sort: { createdAt: -1 } },
+            { $limit: 1 }
+          ],
+          as: "submissions"
+        }
+      },
+      { $unwind: { path: "$submissions", preserveNullAndEmptyArrays: true } },
+      { $match: { "submissions.createdAt": { $gte: new Date(Date.now() - 48 * 60 * 60 * 1000) } } }
+    ]);
+
+    if (recentSubmission.length > 0) {
+      return res.status(400).json({
+        message: "You have already taken a quiz for this offer within the last 48 hours. Please wait before taking another quiz."
+      });
+    }
+
+    // Récupérer un quiz aléatoire publié pour cette offre
+    const [randomQuiz] = await Quiz.aggregate([
+      { 
+        $match: { 
+          offer: offer._id, 
+          isPublished: true,
+          isActive: true
+        } 
+      },
+      { $sample: { size: 1 } }
+    ]);
+
+    if (!randomQuiz) {
+      return res.status(404).json({ message: "No published quiz found for this offer" });
+    }
+
+    // Récupérer toutes les questions de ce quiz
+    const questions = await Question.find({ quiz: randomQuiz._id })
+      .select('questionText questionType choices score order')
+      .sort({ order: 1 });
+
+    if (questions.length === 0) {
+      return res.status(404).json({ message: "No questions found for this quiz" });
+    }
+
+    // Préparer la réponse
+    const quizData = {
+      _id: randomQuiz._id,
+      title: randomQuiz.title,
+      durationSeconds: randomQuiz.durationSeconds,
+      nbrQuestions: randomQuiz.nbrQuestions,
+      totalScore: randomQuiz.totalScore,
+      offer: randomQuiz.offer
+    };
+
+    res.status(200).json({
+      quiz: quizData,
+      questions: questions
+    });
+
+  } catch (err) {
+    console.error("Error in getRandomQuizWithQuestions:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
