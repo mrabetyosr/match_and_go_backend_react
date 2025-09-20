@@ -180,12 +180,9 @@ module.exports.removePost = async (req, res) => {
 
 module.exports.listPosts = async (req, res) => {
   try {
-    // 🔑 Vérification token
     const token = req.headers.authorization?.split(" ")[1];
     if (!token)
-      return res
-        .status(401)
-        .json({ message: "Access denied. No token provided." });
+      return res.status(401).json({ message: "Access denied. No token provided." });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const connectedUser = await User.findById(decoded.id);
@@ -194,35 +191,67 @@ module.exports.listPosts = async (req, res) => {
       return res.status(403).json({ message: "Invalid user." });
     }
 
-    // 📌 Récupérer tous les posts + infos de l’auteur
     const posts = await Post.find()
       .populate("author", "username role logo")
       .sort({ createdAt: -1 });
 
-    // 🔄 Ajouter nb de réactions, de commentaires et de partages pour chaque post
     const postsWithCounts = await Promise.all(
       posts.map(async (post) => {
-        const reactionsCount = await Reaction.countDocuments({ post: post._id });
+        // 🔹 Total des réactions
+        const totalReactions = await Reaction.countDocuments({ post: post._id });
+
+        // 🔹 Réactions par type avec les utilisateurs
+        const reactionsByTypeAgg = await Reaction.aggregate([
+          { $match: { post: post._id } },
+          {
+            $lookup: {
+              from: "users",               // collection users
+              localField: "user",
+              foreignField: "_id",
+              as: "userInfo"
+            }
+          },
+          { $unwind: "$userInfo" },
+          { $group: {
+              _id: "$type",
+              count: { $sum: 1 },
+              users: { 
+                $push: { 
+                  _id: "$userInfo._id",
+                  username: "$userInfo.username",
+                  logo: "$userInfo.image_User"
+                }
+              }
+          }}
+        ]);
+
+        const reactionsByType = reactionsByTypeAgg.reduce((acc, r) => {
+          acc[r._id] = { count: r.count, users: r.users };
+          return acc;
+        }, {});
+
         const commentsCount = await Comment.countDocuments({ post: post._id });
         const sharesCount = await Share.countDocuments({ post: post._id });
 
         return {
           ...post.toObject(),
-          reactionsCount,
+          totalReactions,
+          reactionsByType,
           commentsCount,
-          sharesCount, // 🔹 Added share count
+          sharesCount
         };
       })
     );
 
     return res.status(200).json(postsWithCounts);
+
   } catch (error) {
     console.error(error);
-    return res
-      .status(500)
-      .json({ message: "Erreur serveur.", error: error.message });
+    return res.status(500).json({ message: "Erreur serveur.", error: error.message });
   }
 };
+
+
 
 
 

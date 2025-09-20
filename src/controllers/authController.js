@@ -7,20 +7,36 @@ const path = require("path");
 const fetch = require("node-fetch");
 
 
+// utils/recaptcha.js
 const verifyCaptchaToken = async (captchaToken) => {
   if (!captchaToken) throw new Error("Captcha token missing");
 
-  const response = await fetch("https://www.google.com/recaptcha/api/siteverify", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${captchaToken}`,
-  });
+  // 👉 Utilise la clé de test si NODE_ENV !== "production"
+  const secretKey =
+    process.env.NODE_ENV === "production"
+      ? process.env.RECAPTCHA_SECRET_KEY // vraie clé en prod
+      : "6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe"; // clé de test Google
+
+  const response = await fetch(
+    "https://www.google.com/recaptcha/api/siteverify",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `secret=${secretKey}&response=${captchaToken}`,
+    }
+  );
 
   const data = await response.json();
-  if (!data.success) throw new Error("Captcha verification failed");
+  if (!data.success) {
+    console.error("Captcha verification failed:", data);
+    throw new Error("Captcha verification failed");
+  }
 
   return data;
 };
+
+module.exports = verifyCaptchaToken;
+
 
 
 
