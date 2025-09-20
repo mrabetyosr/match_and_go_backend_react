@@ -319,7 +319,7 @@ module.exports.listReactionsPost = async (req, res) => {
 
     // 🔎 Récup toutes les réactions + username de l'utilisateur
     const reactions = await Reaction.find({ post: postId })
-      .populate("user", "username role logo"); // 👉 on ne prend que ce qu’on veut
+      .populate("user", "username role image_User"); // 👉 on ne prend que ce qu’on veut
 
     // 🔄 Regrouper par type
     const grouped = reactions.reduce((acc, reaction) => {
@@ -331,7 +331,7 @@ module.exports.listReactionsPost = async (req, res) => {
         _id: reaction.user._id,
         username: reaction.user.username,
         role: reaction.user.role,
-        logo: reaction.user.logo
+        logo: reaction.user.image_User
       });
       return acc;
     }, {});

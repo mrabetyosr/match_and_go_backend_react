@@ -20,6 +20,7 @@
   "homepage": "https://github.com/mrabetyosr/match_and_go_backend_react#readme",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
     "body-parser": "^2.2.0",
     "buffer": "^6.0.3",
