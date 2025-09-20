@@ -147,3 +147,39 @@ module.exports.listreplycomment = async (req, res) => {
     return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+
+
+module.exports.updateReply = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "Access denied. No token provided." });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const connectedUser = await User.findById(decoded.id);
+    if (!connectedUser) return res.status(403).json({ message: "User not found." });
+
+    const { replyId } = req.params;
+    const { content } = req.body;
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({ message: "Content cannot be empty." });
+    }
+
+    const reply = await Reply.findById(replyId);
+    if (!reply) return res.status(404).json({ message: "Reply not found." });
+
+    // Optional: Only the author can update their reply
+    if (reply.author.toString() !== connectedUser._id.toString()) {
+      return res.status(403).json({ message: "You can only update your own replies." });
+    }
+
+    reply.content = content;
+    await reply.save();
+
+    return res.status(200).json({ message: "Reply updated successfully", reply });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
