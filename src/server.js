@@ -3,7 +3,7 @@ const dotenv = require("dotenv").config();
 const fetch = require("node-fetch");
 const dbConnect = require("./config/dbConnect"); 
 const notificationRoutes = require("./routes/notificationRoutes");
-const bodyParser = require("body-parser");
+const bodyParser = require("body-parser")
 
 
 
@@ -27,7 +27,7 @@ const interviewRoutes = require("./routes/interviewRoutes");
 const appRatingRoutes = require("./routes/appRatingRoutes");
 const meetRoutes = require("./routes/meetRoutes");
 const profileRoutes = require("./routes/profileRoutes");
-const matchRoutes = require("./routes/matchRoutes");
+
 
 const cors = require("cors");
 
@@ -60,7 +60,6 @@ app.use('/images', express.static('public/images'));
 app.use("/api/meet", meetRoutes);
 app.use("/api/rating", appRatingRoutes);
 app.use("/api/profile", profileRoutes);
-app.use("/api/match", matchRoutes);
 
 
 
