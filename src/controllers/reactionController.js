@@ -4,6 +4,7 @@ const Reaction = require("../models/reactionModel");
 const Post = require("../models/postModel");
 const Comment = require("../models/commentModel");
 const Reply = require("../models/replyModel"); 
+const mongoose = require("mongoose");
 
 
 
@@ -94,7 +95,6 @@ module.exports.creatreact = async (req, res) => {
 
 module.exports.getreacetcount = async (req, res) => {
   try {
-    // 🔑 Vérif token
     const token = req.headers.authorization?.split(" ")[1];
     if (!token) return res.status(401).json({ message: "Access denied. No token provided." });
 
@@ -105,26 +105,44 @@ module.exports.getreacetcount = async (req, res) => {
       return res.status(403).json({ message: "Only candidates and companies can consult the reactions." });
     }
 
-    const { postId, commentId } = req.params;
-    const { type } = req.query; // 👉 on utilise query pour filtrer optionnellement
+    const { postId, commentId, replyId } = req.params;
+    const { withUsers } = req.query;
 
-    if (!postId && !commentId) {
-      return res.status(400).json({ message: "A postId or a commentId must be provided." });
+    if (!postId && !commentId && !replyId) {
+      return res.status(400).json({ message: "A postId, commentId or replyId must be provided." });
     }
 
-    // 🔎 Construire le filtre
-    let filter = {};
-    if (postId) filter.post = postId;
-    if (commentId) filter.comment = commentId;
-    if (type) filter.type = type; // facultatif : filtrer par type
+    // 🔎 Filtre avec conversion ObjectId
+    const filter = {};
+    if (postId) filter.post = new mongoose.Types.ObjectId(postId);
+    if (commentId) filter.comment = new mongoose.Types.ObjectId(commentId);
+    if (replyId) filter.reply = new mongoose.Types.ObjectId(replyId);
 
-    // ⚡ Compter
-    const count = await Reaction.countDocuments(filter);
+    // ⚡ Compter par type
+    const agg = await Reaction.aggregate([
+      { $match: filter },
+      { $group: { _id: "$type", count: { $sum: 1 } } },
+    ]);
 
-    // ✅ Renvoyer le résultat
+    let countsByType = {};
+    let total = 0;
+    agg.forEach(r => {
+      countsByType[r._id] = r.count;
+      total += r.count;
+    });
+
+    // 🔎 Optionnel : récupérer la liste des utilisateurs
+    let users = [];
+    if (withUsers === "true") {
+      users = await Reaction.find(filter)
+        .populate("user", "username role image_User")
+        .select("type user");
+    }
+
     return res.status(200).json({
-      
-      count,
+      total,
+      byType: countsByType,
+      ...(withUsers === "true" && { users }),
     });
 
   } catch (error) {
@@ -132,6 +150,8 @@ module.exports.getreacetcount = async (req, res) => {
     return res.status(500).json({ message: "Server error.", error: error.message });
   }
 };
+
+
 
 
 

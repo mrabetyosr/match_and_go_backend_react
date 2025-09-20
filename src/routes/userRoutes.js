@@ -128,6 +128,11 @@ router.post("/comments/:commentId/replies",verifyToken,authorizeRoles("candidate
 // DELETE /replies/:replyId → delete a reply by ID (accessible by candidate, company, or admin; requires token)
 router.delete("/replies/:replyId",verifyToken,authorizeRoles("candidate", "company", "admin"),replyController.deletereply);
 
+// Route pour lister les replies d'un commentaire
+router.get("/comments/:commentId/replies", replyController.listreplycomment);
+
+router.put("/replies/:replyId", replyController.updateReply);
+
 
 /////////////////////// REACTION POST ROUTES → manage reactions on posts (create, list, count) ///////////////////////
 
@@ -217,5 +222,8 @@ router.get("/saved-jobs", getSavedJobs);
 
 
 router.post("/save-job/:offerId", toggleSaveJob);
+
+
+
 
 module.exports = router;
