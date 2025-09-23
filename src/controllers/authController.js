@@ -5,6 +5,8 @@ const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const path = require("path");
 const fetch = require("node-fetch");
+const Stripe = require("stripe");
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 
 // utils/recaptcha.js
@@ -53,7 +55,7 @@ const register = async (req, res) => {
       size,
       website,
       linkedin,
-      coordinates,   // ✅ uniquement pour company
+      coordinates,
       captchaToken
     } = req.body;
 
@@ -62,38 +64,69 @@ const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newUser = new User({
+    // 🔥 Cas "candidate" → inscription gratuite
+    if (role !== "company") {
+      const newUser = new User({
+        username,
+        email,
+        password: hashedPassword,
+        role: "candidate"
+      });
+
+      await newUser.save();
+
+      return res.status(201).json({
+        message: `Candidate registered with username ${username}`,
+        role: newUser.role
+      });
+    }
+
+    // 🔥 Cas "company" → Stripe Customer + Checkout obligatoire
+    const stripeCustomer = await stripe.customers.create({
+      email,
+      name: username,
+      metadata: { role: "company" }
+    });
+
+    // ✅ Création de session de paiement
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      mode: "subscription", // أو "payment" إذا one-time
+      customer: stripeCustomer.id,
+      line_items: [
+        {
+          price: "price_1SAYphQ3xtNTxTGgYSZchWpn", // ⚠️ تستبدلها بالـ Price ID متاعك من Stripe
+          quantity: 1
+        }
+      ],
+      success_url: `${process.env.CLIENT_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.CLIENT_URL}/payment-cancel`
+    });
+
+    // ⚠️ ما نسجلوش user مفعّل قبل الدفع
+    const pendingUser = new User({
       username,
       email,
       password: hashedPassword,
-      role: role || "candidate",
-    });
-
-    // 🔥 Si c'est une entreprise, on ajoute les infos spécifiques
-    if (role === "company") {
-      newUser.companyInfo = {
+      role: "company",
+      stripeCustomerId: stripeCustomer.id,
+      companyInfo: {
         location,
         category,
         founded,
         size,
         website,
         linkedin,
-      };
+        coordinates: coordinates || null
+      },
+      isActive: false // ✅ Active après paiement
+    });
 
-      // ✅ Ajout des coordonnées uniquement pour les entreprises
-      if (coordinates && typeof coordinates === "object") {
-        newUser.companyInfo.coordinates = {
-          lat: coordinates.lat,
-          lng: coordinates.lng
-        };
-      }
-    }
+    await pendingUser.save();
 
-    await newUser.save();
-
-    res.status(201).json({ 
-      message: `User registered with username ${username}`, 
-      role: newUser.role 
+    res.status(201).json({
+      message: "Company must complete payment",
+      checkoutUrl: session.url
     });
 
   } catch (err) {
