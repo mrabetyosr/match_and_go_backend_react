@@ -4,6 +4,7 @@ const Quiz = require("../models/quizModel");
 const User = require("../models/userModel");
 const sendEmail = require("../utils/sendEmail");
 const Question = require("../models/questionModel");
+const QuizAnswer = require("../models/quizAnswer");
 
 
 // 🔹 Fonction utilitaire : recalcul automatique du totalScore et nbrQuestions
@@ -342,5 +343,40 @@ exports.getRandomQuizWithQuestions = async (req, res) => {
   } catch (err) {
     console.error("Error in getRandomQuizWithQuestions:", err);
     res.status(500).json({ message: err.message });
+  }
+};
+
+// Récupérer les résultats de quiz du candidat
+
+
+exports.getMyQuizResults = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const quizResults = await QuizAnswer.find({ candidate: userId })
+      .populate({
+        path: "quiz", // 🔹 utiliser "quiz" et non "quizId"
+        select: "title durationSeconds totalScore",
+        populate: {
+          path: "offer",
+          select: "jobTitle companyId",
+          populate: {
+            path: "companyId",
+            select: "username",
+          },
+        },
+      })
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      results: quizResults,
+    });
+  } catch (error) {
+    console.error("Error fetching quiz results:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch quiz results",
+    });
   }
 };

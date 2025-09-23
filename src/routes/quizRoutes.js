@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 const verifyToken = require("../middleware/authMiddleware");
 const { submitQuiz,getQuizSubmissions } = require("../controllers/quizAnswerController");
-const { getRandomQuizWithQuestions } = require("../controllers/quizController");
+const { getRandomQuizWithQuestions,getMyQuizResults } = require("../controllers/quizController");
 
 
 //submit quiz answers (only candidate)
@@ -14,6 +14,9 @@ router.get("/:quizId/allSubmissions", verifyToken, getQuizSubmissions);
 
 //  récupérer un quiz aléatoire avec questions (pour candidat)
 router.get("/:offerId/random-quiz-with-questions", verifyToken, getRandomQuizWithQuestions);
+
+// Récupérer les résultats de quiz du candidat
+router.get("/my-results", verifyToken, getMyQuizResults);
 
 
 module.exports = router;
