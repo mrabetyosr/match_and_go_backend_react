@@ -30,7 +30,21 @@ const applicationSchema = new mongoose.Schema(
      phoneNumber: { type: String },
     location: { type: String },
     dateOfBirth: { type: Date },
-    email: { type: String }, // <-- auto rempli
+    email: { type: String },
+
+    // NOUVEAU: Informations sur la soumission de quiz
+    quizSubmission: {
+      hasSubmitted: { type: Boolean, default: false },
+      submissionId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: "quizAnswer" 
+      },
+      score: { type: Number },
+      totalPossibleScore: { type: Number },
+      percentage: { type: Number },
+      quizTitle: { type: String },
+      submittedAt: { type: Date }
+    }
   },
   { timestamps: true }
 );

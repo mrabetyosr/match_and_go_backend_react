@@ -1,6 +1,7 @@
 const Application = require("../models/applicationModel");
 const Offer = require("../models/offerModel");
 const User = require("../models/userModel");
+const QuizAnswer = require("../models/quizAnswer");
 const jwt = require("jsonwebtoken");
 
 const applyToOffer = async (req, res) => {
@@ -50,12 +51,9 @@ const applyToOffer = async (req, res) => {
       motivationLetter: motivationLetterPath,
       linkedin: req.body.linkedin || null,
       github: req.body.github || null,
-
       phoneNumber: req.body.phoneNumber || null,
       location: req.body.location || null,
       dateOfBirth: req.body.dateOfBirth ? new Date(req.body.dateOfBirth) : null,
-
-      
       email: user.email,
     });
 
@@ -69,7 +67,6 @@ const applyToOffer = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
 
 // GET all my applications candidate 
 const getMyApplications = async (req, res) => {
@@ -125,17 +122,83 @@ const getOfferSubmissions = async (req, res) => {
       return res.status(403).json({ message: "Access denied. Only the offer owner can see submissions." });
     }
 
-    // 3️⃣ Récupérer toutes les candidatures pour cette offre
+    // Get all applications for this offer
     const applications = await Application.find({ offerId: offer._id })
       .populate("candidateId", "username email dateOfBirth phoneNumber location")
       .sort({ createdAt: -1 });
 
-    res.status(200).json({ applications });
+    // For each application, check if the candidate has submitted a quiz for this offer
+    const applicationsWithQuizData = await Promise.all(
+      applications.map(async (application) => {
+        try {
+          // Find quiz submissions for this candidate and this offer
+          const quizSubmissions = await QuizAnswer.find({
+            candidate: application.candidateId._id,
+          })
+          .populate({
+            path: "quiz",
+            select: "title totalScore offer",
+            match: { offer: offerId }, // Only get quizzes for this specific offer
+          })
+          .sort({ createdAt: -1 });
+
+          // Filter out null quiz results (where offer doesn't match)
+          const validQuizSubmissions = quizSubmissions.filter(submission => submission.quiz !== null);
+
+          let quizSubmission = {
+            hasSubmitted: false,
+            submissionId: null,
+            score: null,
+            totalPossibleScore: null,
+            percentage: null,
+            quizTitle: null,
+            submittedAt: null
+          };
+
+          if (validQuizSubmissions.length > 0) {
+            const latestQuizSubmission = validQuizSubmissions[0];
+            quizSubmission = {
+              hasSubmitted: true,
+              submissionId: latestQuizSubmission._id,
+              score: latestQuizSubmission.score,
+              totalPossibleScore: latestQuizSubmission.totalScore,
+              percentage: latestQuizSubmission.percentage,
+              quizTitle: latestQuizSubmission.quiz.title,
+              submittedAt: latestQuizSubmission.createdAt
+            };
+          }
+
+          // Return application with quiz data
+          return {
+            ...application.toObject(),
+            quizSubmission
+          };
+        } catch (error) {
+          console.error(`Error processing quiz data for application ${application._id}:`, error);
+          // Return application with default quiz submission data if error occurs
+          return {
+            ...application.toObject(),
+            quizSubmission: {
+              hasSubmitted: false,
+              submissionId: null,
+              score: null,
+              totalPossibleScore: null,
+              percentage: null,
+              quizTitle: null,
+              submittedAt: null
+            }
+          };
+        }
+      })
+    );
+
+    res.status(200).json({ applications: applicationsWithQuizData });
 
   } catch (err) {
     if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
       return res.status(401).json({ message: "Invalid or expired token" });
     }
+    console.error("Error in getOfferSubmissions:", err);
     res.status(500).json({ message: err.message });
   }
 };
@@ -201,10 +264,8 @@ const updateApplicationStatus = async (req, res) => {
   }
 };
 
-
 const deleteApplicationsForOffer = async (req, res) => {
   try {
-    // 1️⃣ Verify token
     const token = req.headers.authorization?.split(" ")[1];
     if (!token) return res.status(401).json({ message: "No token provided" });
 
@@ -219,12 +280,10 @@ const deleteApplicationsForOffer = async (req, res) => {
     const offer = await Offer.findById(offerId);
     if (!offer) return res.status(404).json({ message: "Offer not found" });
 
-    // 2️⃣ Check ownership
     if (offer.companyId.toString() !== user._id.toString()) {
       return res.status(403).json({ message: "You are not allowed to delete applications for this offer." });
     }
 
-    // 3️⃣ Delete all applications for this offer
     const deleted = await Application.deleteMany({ offerId: offer._id });
 
     res.status(200).json({ message: `${deleted.deletedCount} applications deleted successfully` });
@@ -235,4 +294,5 @@ const deleteApplicationsForOffer = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-module.exports = { deleteApplicationsForOffer,applyToOffer, getMyApplications, getOfferSubmissions, updateApplicationStatus };
+
+module.exports = { deleteApplicationsForOffer, applyToOffer, getMyApplications, getOfferSubmissions, updateApplicationStatus };
