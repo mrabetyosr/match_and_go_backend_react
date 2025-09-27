@@ -13,18 +13,49 @@ const addOfferCompany = async (req, res) => {
     const user = await User.findById(decoded.id);
 
     if (!user || user.role !== "company") {
-      return res.status(403).json({ message: "Access denied. Only companies can add an offer!." });
+      return res
+        .status(403)
+        .json({ message: "Access denied. Only companies can add an offer!" });
     }
 
+    // Vérifier le plan
+    const planId = user.planInfo?.planId;
+    if (!planId) {
+      return res.status(403).json({ message: "No active plan found. Please subscribe first." });
+    }
+
+    // Cas du plan Lite → max 2 offres par jour
+    if (planId === "lite") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const offersToday = await Offer.countDocuments({
+        companyId: user._id,
+        createdAt: { $gte: today, $lt: tomorrow }
+      });
+
+      if (offersToday >= 2) {
+        return res.status(403).json({
+          message: "Offer limit reached for today (2 per day with Lite plan)."
+        });
+      }
+    }
+
+    // Cas du plan Pro → illimité
     const offerData = { ...req.body, companyId: user._id };
     const newOffer = new Offer(offerData);
     await newOffer.save();
 
     res.status(201).json(newOffer);
   } catch (err) {
+    console.error("Error adding offer:", err);
     res.status(500).json({ message: err.message });
   }
 };
+
 //gel all offers 
 const getAllOffers = async (req, res) => {
   try {

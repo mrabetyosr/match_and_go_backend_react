@@ -62,6 +62,20 @@ const userSchema = new mongoose.Schema(
         linkedin: { type: String },
       },
     },
+    subscriptionId: String,
+    stripeCustomerId: String,
+    isActive: { type: Boolean, default: false },
+    planInfo: {
+      planId: String,
+      planName: String,
+      priceId: String,
+    },
+    paymentInfo: {
+      sessionId: String,
+      amount: Number,
+      currency: String,
+      paidAt: Date,
+    },
 
     hasRatedApp: { type: Boolean, default: false }, // ✅ ajout
     loginCount: { type: Number, default: 0 }, // Track logins
