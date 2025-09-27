@@ -525,3 +525,270 @@ module.exports.getuserforrating = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+/////////////////////
+// Add these methods to your userController.js
+
+// Get user by ID with full details
+module.exports.getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Verify admin access
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "Access denied. No token provided." });
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const connectedUser = await User.findById(decoded.id);
+    
+    if (!connectedUser || connectedUser.role !== "admin") {
+      return res.status(403).json({ message: "Access denied. Only admins can access user details." });
+    }
+
+    const user = await User.findById(id).select("-password");
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get all users with pagination and filtering
+module.exports.getAllUsersWithDetails = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "Access denied. No token provided." });
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const connectedUser = await User.findById(decoded.id);
+    
+    if (!connectedUser || connectedUser.role !== "admin") {
+      return res.status(403).json({ message: "Access denied. Only admins can access user list." });
+    }
+
+    const { page = 1, limit = 10, role, search, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+    
+    // Build filter object
+    const filter = {};
+    if (role && role !== 'all') {
+      filter.role = role;
+    }
+    if (search) {
+      filter.$or = [
+        { username: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Build sort object
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    const users = await User.find(filter)
+      .select('-password')
+      .sort(sort)
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .exec();
+
+    const totalUsers = await User.countDocuments(filter);
+
+    res.status(200).json({
+      users,
+      totalPages: Math.ceil(totalUsers / limit),
+      currentPage: page,
+      totalUsers,
+      hasNextPage: page < Math.ceil(totalUsers / limit),
+      hasPrevPage: page > 1
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Update user status (activate/deactivate)
+module.exports.updateUserStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isActive } = req.body;
+    
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "Access denied. No token provided." });
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const connectedUser = await User.findById(decoded.id);
+    
+    if (!connectedUser || connectedUser.role !== "admin") {
+      return res.status(403).json({ message: "Access denied. Only admins can update user status." });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // Don't allow deactivating other admins
+    if (user.role === "admin" && !isActive) {
+      return res.status(403).json({ message: "Cannot deactivate admin users." });
+    }
+
+    user.isActive = isActive;
+    await user.save();
+
+    res.status(200).json({ 
+      message: `User ${isActive ? 'activated' : 'deactivated'} successfully.`,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get user statistics for dashboard
+module.exports.getUserStats = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "Access denied. No token provided." });
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const connectedUser = await User.findById(decoded.id);
+    
+    if (!connectedUser || connectedUser.role !== "admin") {
+      return res.status(403).json({ message: "Access denied. Only admins can access user statistics." });
+    }
+
+    const now = new Date();
+    const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const stats = await Promise.all([
+      // Total counts
+      User.countDocuments({}),
+      User.countDocuments({ role: 'candidate' }),
+      User.countDocuments({ role: 'company' }),
+      User.countDocuments({ role: 'admin' }),
+      
+      // Active users
+      User.countDocuments({ isActive: true }),
+      User.countDocuments({ isActive: false }),
+      
+      // Recent registrations
+      User.countDocuments({ createdAt: { $gte: last30Days } }),
+      User.countDocuments({ createdAt: { $gte: last7Days } }),
+      
+      // Active companies with subscriptions
+      User.countDocuments({ role: 'company', isActive: true, stripeCustomerId: { $exists: true } }),
+    ]);
+
+    res.status(200).json({
+      totalUsers: stats[0],
+      totalCandidates: stats[1],
+      totalCompanies: stats[2],
+      totalAdmins: stats[3],
+      activeUsers: stats[4],
+      inactiveUsers: stats[5],
+      newUsersLast30Days: stats[6],
+      newUsersLast7Days: stats[7],
+      companiesWithSubscription: stats[8]
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Bulk actions for users
+module.exports.bulkUserActions = async (req, res) => {
+  try {
+    const { userIds, action } = req.body;
+    
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "Access denied. No token provided." });
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const connectedUser = await User.findById(decoded.id);
+    
+    if (!connectedUser || connectedUser.role !== "admin") {
+      return res.status(403).json({ message: "Access denied. Only admins can perform bulk actions." });
+    }
+
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ message: "User IDs array is required." });
+    }
+
+    let result;
+    switch (action) {
+      case 'activate':
+        result = await User.updateMany(
+          { _id: { $in: userIds }, role: { $ne: 'admin' } },
+          { isActive: true }
+        );
+        break;
+      case 'deactivate':
+        result = await User.updateMany(
+          { _id: { $in: userIds }, role: { $ne: 'admin' } },
+          { isActive: false }
+        );
+        break;
+      case 'delete':
+        result = await User.deleteMany(
+          { _id: { $in: userIds }, role: { $in: ['candidate', 'company'] } }
+        );
+        break;
+      default:
+        return res.status(400).json({ message: "Invalid action. Use 'activate', 'deactivate', or 'delete'." });
+    }
+
+    res.status(200).json({
+      message: `Bulk ${action} completed successfully.`,
+      modifiedCount: result.modifiedCount || result.deletedCount,
+      matchedCount: result.matchedCount
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Export recent user activity
+module.exports.getRecentUserActivity = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "Access denied. No token provided." });
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const connectedUser = await User.findById(decoded.id);
+    
+    if (!connectedUser || connectedUser.role !== "admin") {
+      return res.status(403).json({ message: "Access denied. Only admins can access user activity." });
+    }
+
+    const { days = 7 } = req.query;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    const recentUsers = await User.find({
+      $or: [
+        { createdAt: { $gte: startDate } },
+        { updatedAt: { $gte: startDate } }
+      ]
+    })
+    .select('username email role createdAt updatedAt isActive loginCount')
+    .sort({ updatedAt: -1 })
+    .limit(50);
+
+    res.status(200).json({
+      recentActivity: recentUsers,
+      totalCount: recentUsers.length,
+      period: `${days} days`
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

@@ -1,6 +1,15 @@
 const express = require("express");
 const verifyToken = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
+const { 
+  getUserById, 
+  getAllUsersWithDetails, 
+  updateUserStatus, 
+  getUserStats, 
+  bulkUserActions, 
+  getRecentUserActivity 
+} = require("../controllers/userController");
+
 const { updatePhoto,DeleteUserById,getAllCandidates, updateUserInfo, getAllCompany, updateCover,getCompaniesByCategory,getCurrentUser,getuserforrating} = require("../controllers/userController");
 const uploadfile = require("../middleware/uploadFile");
 const postController = require("../controllers/postController");
@@ -222,7 +231,26 @@ router.get("/saved-jobs", getSavedJobs);
 
 
 router.post("/save-job/:offerId", toggleSaveJob);
+/////////////
+/////////////////////// ADMIN USER MANAGEMENT ROUTES ///////////////////////
 
+// GET /users/stats → get user statistics for admin dashboard (admin only, requires token)
+router.get("/stats", verifyToken, authorizeRoles("admin"), getUserStats);
+
+// GET /users/all → get all users with pagination and filtering (admin only, requires token)
+router.get("/all", verifyToken, authorizeRoles("admin"), getAllUsersWithDetails);
+
+// GET /users/activity → get recent user activity (admin only, requires token)
+router.get("/activity", verifyToken, authorizeRoles("admin"), getRecentUserActivity);
+
+// GET /users/:id → get user by ID with full details (admin only, requires token)
+router.get("/user/:id", verifyToken, authorizeRoles("admin"), getUserById);
+
+// PUT /users/:id/status → update user status (activate/deactivate) (admin only, requires token)
+router.put("/:id/status", verifyToken, authorizeRoles("admin"), updateUserStatus);
+
+// POST /users/bulk-actions → perform bulk actions on multiple users (admin only, requires token)
+router.post("/bulk-actions", verifyToken, authorizeRoles("admin"), bulkUserActions);
 
 
 
