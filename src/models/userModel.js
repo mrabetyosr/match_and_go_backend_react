@@ -77,8 +77,8 @@ const userSchema = new mongoose.Schema(
       paidAt: Date,
     },
 
-    hasRatedApp: { type: Boolean, default: false }, // ✅ ajout
-    loginCount: { type: Number, default: 0 }, // Track logins
+    hasRatedApp: { type: Boolean, default: false }, 
+    loginCount: { type: Number, default: 0 }, 
 
 
 
