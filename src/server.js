@@ -27,6 +27,8 @@ const interviewRoutes = require("./routes/interviewRoutes");
 const appRatingRoutes = require("./routes/appRatingRoutes");
 const meetRoutes = require("./routes/meetRoutes");
 const profileRoutes = require("./routes/profileRoutes");
+const adminRoutes = require("./routes/adminDashboardRoutes");
+const subscriptionRoutes = require("./routes/paymentRoutes");
 
 
 const cors = require("cors");
@@ -60,6 +62,8 @@ app.use('/images', express.static('public/images'));
 app.use("/api/meet", meetRoutes);
 app.use("/api/rating", appRatingRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/dashboard", adminRoutes);
+app.use("/api/subscription", subscriptionRoutes);
 
 
 
