@@ -29,6 +29,7 @@ const meetRoutes = require("./routes/meetRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const adminRoutes = require("./routes/adminDashboardRoutes");
 const subscriptionRoutes = require("./routes/paymentRoutes");
+const profileCandidateRoutes = require('./routes/profileCandidateRoutes');
 
 
 const cors = require("cors");
@@ -64,6 +65,7 @@ app.use("/api/rating", appRatingRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/dashboard", adminRoutes);
 app.use("/api/subscription", subscriptionRoutes);
+app.use('/api/candidate', profileCandidateRoutes);
 
 
 

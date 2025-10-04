@@ -6,7 +6,6 @@ const jwt = require("jsonwebtoken");
 
 const applyToOffer = async (req, res) => {
   try {
-   
     const token = req.headers.authorization?.split(" ")[1];
     if (!token) return res.status(401).json({ message: "No token provided" });
 
@@ -17,7 +16,6 @@ const applyToOffer = async (req, res) => {
       return res.status(403).json({ message: "Only candidates can apply." });
     }
 
-    
     const offerId = req.params.offerId;
     const offer = await Offer.findById(offerId);
     if (!offer) return res.status(404).json({ message: "Offer not found" });
@@ -26,7 +24,6 @@ const applyToOffer = async (req, res) => {
       return res.status(400).json({ message: "The offer is already closed." });
     }
 
-   
     const existingApp = await Application.findOne({
       candidateId: user._id,
       offerId: offer._id,
@@ -35,7 +32,6 @@ const applyToOffer = async (req, res) => {
       return res.status(400).json({ message: "You have already applied to this offer." });
     }
 
-   
     if (!req.files || !req.files.cv || !req.files.motivationLetter) {
       return res.status(400).json({ message: "CV and Motivation Letter are required" });
     }
@@ -43,7 +39,6 @@ const applyToOffer = async (req, res) => {
     const cvPath = req.files.cv[0].filename;
     const motivationLetterPath = req.files.motivationLetter[0].filename;
 
-    
     const application = new Application({
       candidateId: user._id,
       offerId: offer._id,
@@ -59,7 +54,40 @@ const applyToOffer = async (req, res) => {
 
     await application.save();
 
-    res.status(201).json({ message: "Application submitted successfully", application });
+    // 🔥 Count all applications of this user
+    const totalApplications = await Application.countDocuments({ candidateId: user._id });
+
+    // 🔥 Badge milestones
+    const milestones = [
+      { count: 3, badge: "Bronze Applicant" },
+      { count: 5, badge: "Silver Applicant" },
+      { count: 10, badge: "Gold Applicant" },
+      { count: 15, badge: "Platinum Applicant" },
+      { count: 30, badge: "Diamond Applicant" },
+    ];
+
+    let newBadge = null;
+    for (const milestone of milestones) {
+      if (
+        totalApplications === milestone.count &&
+        !user.candidateInfo.badges.includes(milestone.badge)
+      ) {
+        user.candidateInfo.badges.push(milestone.badge);
+        newBadge = milestone.badge;
+        break;
+      }
+    }
+
+    if (newBadge) {
+      await user.save();
+    }
+
+    res.status(201).json({
+      message: "Application submitted successfully",
+      application,
+      newBadge,
+      allBadges: user.candidateInfo.badges, // 👈 return all badges
+    });
   } catch (err) {
     if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
       return res.status(401).json({ message: "Invalid or expired token" });
@@ -67,6 +95,7 @@ const applyToOffer = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
 
 // GET all my applications candidate 
 const getMyApplications = async (req, res) => {
