@@ -35,6 +35,10 @@ const userSchema = new mongoose.Schema(
       location: { type: String },
       dateOfBirth: { type: Date },
       savedJobs: [{ type: mongoose.Schema.Types.ObjectId, ref: "Offer" }],
+      badges: {
+        type: [String],
+        default: [],
+      },
     },
 
     companyInfo: {

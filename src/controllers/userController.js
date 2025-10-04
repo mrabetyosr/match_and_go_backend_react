@@ -155,41 +155,58 @@ module.exports.updateUserInfo = async (req, res) => {
     // -----------------------------
     // Update candidate info
     // -----------------------------
-    if (candidateInfo) {
-      const candidate = typeof candidateInfo === "string" ? JSON.parse(candidateInfo) : candidateInfo;
-      updateData.candidateInfo = {};
-      const allowedFields = ["phoneNumber", "location", "dateOfBirth"];
-      allowedFields.forEach(field => {
-        if (candidate[field] !== undefined) {
-          updateData.candidateInfo[field] = candidate[field];
-        }
-      });
+if (candidateInfo) {
+  const candidate = typeof candidateInfo === "string" ? JSON.parse(candidateInfo) : candidateInfo;
+  
+  // Merge with existing candidateInfo
+  const existingCandidateInfo = (await User.findById(userId)).candidateInfo || {};
+  updateData.candidateInfo = { ...existingCandidateInfo };
+  
+  const allowedFields = ["phoneNumber", "location", "dateOfBirth"];
+  allowedFields.forEach(field => {
+    if (candidate[field] !== undefined) {
+      updateData.candidateInfo[field] = candidate[field];
     }
+  });
+}
+
 
     // -----------------------------
     // Update company info
     // -----------------------------
-    if (companyInfo) {
-      const company = typeof companyInfo === "string" ? JSON.parse(companyInfo) : companyInfo;
-      updateData.companyInfo = {};
-      const allowedFields = ["description", "location", "category", "founded", "size", "website", "socialLinks", "coordinates"];
+if (companyInfo) {
+  const company = typeof companyInfo === "string" ? JSON.parse(companyInfo) : companyInfo;
 
-      allowedFields.forEach(field => {
-        if (company[field] !== undefined) {
-          if (field === "socialLinks" && typeof company[field] === "string") {
-            updateData.companyInfo[field] = JSON.parse(company[field]);
-          } else if (field === "coordinates" && typeof company[field] === "object") {
-            // Assure-toi que coordinates contient lat et lng
-            updateData.companyInfo.coordinates = {
-              lat: company[field].lat,
-              lng: company[field].lng
-            };
-          } else {
-            updateData.companyInfo[field] = company[field];
-          }
+  // Merge avec l'existant
+  const existingCompanyInfo = (await User.findById(userId)).companyInfo || {};
+  updateData.companyInfo = { ...existingCompanyInfo };
+
+  const allowedFields = ["description", "location", "category", "founded", "size", "website", "socialLinks", "coordinates"];
+
+  allowedFields.forEach(field => {
+    if (company[field] !== undefined) {
+      if (field === "socialLinks") {
+        if (typeof company[field] === "string") {
+          updateData.companyInfo[field] = JSON.parse(company[field]);
+        } else {
+          updateData.companyInfo[field] = {
+            ...existingCompanyInfo.socialLinks,
+            ...company[field],
+          };
         }
-      });
+      } else if (field === "coordinates" && typeof company[field] === "object") {
+        updateData.companyInfo.coordinates = {
+          ...existingCompanyInfo.coordinates,
+          lat: company[field].lat,
+          lng: company[field].lng,
+        };
+      } else {
+        updateData.companyInfo[field] = company[field];
+      }
     }
+  });
+}
+
 
     // -----------------------------
     // Update the user

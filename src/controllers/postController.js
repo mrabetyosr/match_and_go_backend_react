@@ -192,7 +192,7 @@ module.exports.listPosts = async (req, res) => {
     }
 
     const posts = await Post.find()
-      .populate("author", "username role logo")
+.populate("author", "username role image_User")
       .sort({ createdAt: -1 });
 
     const postsWithCounts = await Promise.all(

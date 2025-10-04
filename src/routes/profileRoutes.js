@@ -1,8 +1,10 @@
 const express = require("express");
 const router = express.Router();
-const { getCompanyById } = require("../controllers/profileController");
+const { getUserById ,getAllCandidates} = require("../controllers/profileController");
 
 // ✅ GET /api/profile/:id
-router.get("/:id", getCompanyById);
+router.get("/candidates", getAllCandidates);
+router.get("/:id", getUserById);
+
 
 module.exports = router;
