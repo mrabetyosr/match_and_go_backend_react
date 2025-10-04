@@ -36,4 +36,12 @@ router.get("/admin/companies/:companyId", getCompanyDetailsById);
 router.get("/admin/offers/:offerId", getOfferWithQuizzes);
 router.get("/admin/quizzes/:quizId", getQuizDetails);
 
+const { 
+  getAllCandidatesWithStats,
+  getCandidateDetailedInfo
+} = require("../controllers/candidateDetailsController");
+
+router.get("/admin/candidates/stats", getAllCandidatesWithStats);
+router.get("/admin/candidates/:candidateId/details", getCandidateDetailedInfo);
+
 module.exports = router;
