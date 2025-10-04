@@ -30,6 +30,7 @@ const profileRoutes = require("./routes/profileRoutes");
 const adminRoutes = require("./routes/adminDashboardRoutes");
 const subscriptionRoutes = require("./routes/paymentRoutes");
 const profileCandidateRoutes = require('./routes/profileCandidateRoutes');
+const userModel = require("./models/userModel");
 
 
 const cors = require("cors");

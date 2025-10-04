@@ -24,4 +24,24 @@ router.get("/posts-per-day", getPostsStatsPerDay);
 router.get("/offers-with-applicants", getOffersWithApplicants);
 router.get("/meetings", getScheduledMeetings);
 
+const { 
+  getAllCompaniesWithDetails,
+  getCompanyDetailsById,
+  getOfferWithQuizzes,
+  getQuizDetails
+} = require("../controllers/companiesAdminController");
+
+router.get("/admin/companies", getAllCompaniesWithDetails);
+router.get("/admin/companies/:companyId", getCompanyDetailsById);
+router.get("/admin/offers/:offerId", getOfferWithQuizzes);
+router.get("/admin/quizzes/:quizId", getQuizDetails);
+
+const { 
+  getAllCandidatesWithStats,
+  getCandidateDetailedInfo
+} = require("../controllers/candidateDetailsController");
+
+router.get("/admin/candidates/stats", getAllCandidatesWithStats);
+router.get("/admin/candidates/:candidateId/details", getCandidateDetailedInfo);
+
 module.exports = router;
